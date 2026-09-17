@@ -25,6 +25,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->boolean('is_vip')->default(false);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['branch_id', 'last_name']);
             $table->index(['branch_id', 'email']);
@@ -56,6 +57,7 @@ return new class extends Migration
             $table->string('cancellation_reason', 255)->nullable();
             $table->unsignedBigInteger('created_by')->nullable()->index();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['branch_id', 'status']);
             $table->index(['branch_id', 'check_in']);
@@ -84,6 +86,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('received_by')->nullable()->index();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['branch_id', 'status']);
             $table->index(['branch_id', 'paid_on']);
@@ -115,6 +118,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('created_by')->nullable()->index();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['branch_id', 'status']);
             $table->index(['branch_id', 'issued_on']);

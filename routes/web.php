@@ -149,7 +149,6 @@ Route::middleware('auth')->group(function () {
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
     });
-}
 });
 
 require __DIR__.'/auth.php';

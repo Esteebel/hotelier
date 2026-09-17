@@ -52,20 +52,20 @@ const navigation = [
     {
         label: "Operations",
         items: [
-            { label: "Reservations", icon: "calendar" },
-            { label: "Guests", icon: "users" },
+            { label: "Reservations", icon: "calendar", href: "reservations.index", active: "reservations.*" },
+            { label: "Guests", icon: "users", href: "guests.index", active: "guests.*" },
         ],
     },
     {
         label: "Finance",
         items: [
-            { label: "Payments", icon: "card" },
-            { label: "Invoices", icon: "receipt" },
+            { label: "Payments", icon: "card", href: "payments.index", active: "payments.*" },
+            { label: "Invoices", icon: "receipt", href: "invoices.index", active: "invoices.*" },
         ],
     },
     {
         label: "Reports",
-        items: [{ label: "Reports & Analytics", icon: "chart" }],
+        items: [{ label: "Reports & Analytics", icon: "chart", href: "reports.index", active: "reports.*" }],
     },
     {
         label: "System",
