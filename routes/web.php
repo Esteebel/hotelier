@@ -7,6 +7,7 @@ use App\Http\Controllers\GuestController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\HousekeepingTaskController;
 use App\Http\Controllers\RoomTransferController;
 use App\Http\Controllers\ReportController;
 
@@ -155,6 +156,18 @@ Route::middleware('auth')->group(function () {
         Route::put('/{roomTransfer}', [RoomTransferController::class, 'update'])->name('update');
         Route::delete('/{roomTransfer}', [RoomTransferController::class, 'destroy'])->name('destroy');
         Route::post('/{roomTransfer}/complete', [RoomTransferController::class, 'complete'])->name('complete');
+    });
+
+    // Room Transfers
+    // Housekeeping
+    Route::prefix('housekeeping')->name('housekeeping.')->group(function () {
+        Route::get('/', [HousekeepingTaskController::class, 'index'])->name('index');
+        Route::get('/create', [HousekeepingTaskController::class, 'create'])->name('create');
+        Route::post('/', [HousekeepingTaskController::class, 'store'])->name('store');
+        Route::get('/{housekeepingTask}/edit', [HousekeepingTaskController::class, 'edit'])->name('edit');
+        Route::put('/{housekeepingTask}', [HousekeepingTaskController::class, 'update'])->name('update');
+        Route::delete('/{housekeepingTask}', [HousekeepingTaskController::class, 'destroy'])->name('destroy');
+        Route::post('/{housekeepingTask}/complete', [HousekeepingTaskController::class, 'complete'])->name('complete');
     });
 
     // Reports

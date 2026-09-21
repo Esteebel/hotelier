@@ -52,21 +52,65 @@ const navigation = [
     {
         label: "Operations",
         items: [
-            { label: "Reservations", icon: "calendar", href: "reservations.index", active: "reservations.*" },
-            { label: "Guests", icon: "users", href: "guests.index", active: "guests.*" },
-            { label: "Room Transfers", icon: "move", href: "room-transfers.index", active: "room-transfers.*" },
+            {
+                label: "Reservations",
+                icon: "calendar",
+                href: "reservations.index",
+                active: "reservations.*",
+            },
+            {
+                label: "Guests",
+                icon: "users",
+                href: "guests.index",
+                active: "guests.*",
+            },
+            {
+                label: "Room Transfers",
+                icon: "move",
+                href: "room-transfers.index",
+                active: "room-transfers.*",
+            },
+            {
+                label: "Housekeeping",
+                icon: "sparkles",
+                href: "housekeeping.index",
+                active: "housekeeping.*",
+            },
+            {
+                label: "Housekeeping",
+                icon: "sparkles",
+                href: "housekeeping.index",
+                active: "housekeeping.*",
+            },
         ],
     },
     {
         label: "Finance",
         items: [
-            { label: "Payments", icon: "card", href: "payments.index", active: "payments.*" },
-            { label: "Invoices", icon: "receipt", href: "invoices.index", active: "invoices.*" },
+            {
+                label: "Payments",
+                icon: "card",
+                href: "payments.index",
+                active: "payments.*",
+            },
+            {
+                label: "Invoices",
+                icon: "receipt",
+                href: "invoices.index",
+                active: "invoices.*",
+            },
         ],
     },
     {
         label: "Reports",
-        items: [{ label: "Reports & Analytics", icon: "chart", href: "reports.index", active: "reports.*" }],
+        items: [
+            {
+                label: "Reports & Analytics",
+                icon: "chart",
+                href: "reports.index",
+                active: "reports.*",
+            },
+        ],
     },
     {
         label: "System",
