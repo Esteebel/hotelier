@@ -7,6 +7,7 @@ use App\Http\Controllers\GuestController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\RoomTransferController;
 use App\Http\Controllers\ReportController;
 
 use App\Http\Controllers\RoleController;
@@ -143,6 +144,17 @@ Route::middleware('auth')->group(function () {
         Route::get('/{invoice}/edit', [InvoiceController::class, 'edit'])->name('edit');
         Route::put('/{invoice}', [InvoiceController::class, 'update'])->name('update');
         Route::delete('/{invoice}', [InvoiceController::class, 'destroy'])->name('destroy');
+    });
+
+    // Room Transfers
+    Route::prefix('room-transfers')->name('room-transfers.')->group(function () {
+        Route::get('/', [RoomTransferController::class, 'index'])->name('index');
+        Route::get('/create', [RoomTransferController::class, 'create'])->name('create');
+        Route::post('/', [RoomTransferController::class, 'store'])->name('store');
+        Route::get('/{roomTransfer}/edit', [RoomTransferController::class, 'edit'])->name('edit');
+        Route::put('/{roomTransfer}', [RoomTransferController::class, 'update'])->name('update');
+        Route::delete('/{roomTransfer}', [RoomTransferController::class, 'destroy'])->name('destroy');
+        Route::post('/{roomTransfer}/complete', [RoomTransferController::class, 'complete'])->name('complete');
     });
 
     // Reports

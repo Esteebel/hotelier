@@ -54,6 +54,7 @@ const navigation = [
         items: [
             { label: "Reservations", icon: "calendar", href: "reservations.index", active: "reservations.*" },
             { label: "Guests", icon: "users", href: "guests.index", active: "guests.*" },
+            { label: "Room Transfers", icon: "move", href: "room-transfers.index", active: "room-transfers.*" },
         ],
     },
     {
