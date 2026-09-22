@@ -124,6 +124,12 @@ const navigation = [
                 href: "staff.index",
                 active: "staff.*",
             },
+            {
+                label: "Notifications",
+                icon: "bell",
+                href: "notifications.index",
+                active: "notifications.*",
+            },
         ],
     },
     {

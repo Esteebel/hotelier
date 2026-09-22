@@ -16,6 +16,7 @@ use App\Http\Controllers\CheckinController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RoomTransferController;
 use App\Http\Controllers\ReportController;
 
@@ -264,6 +265,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/{staff}', [StaffController::class, 'update'])->name('update');
         Route::delete('/{staff}', [StaffController::class, 'destroy'])->name('destroy');
         Route::post('/{staff}/complete', [StaffController::class, 'complete'])->name('complete');
+    });
+
+    // Notifications
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('/create', [NotificationController::class, 'create'])->name('create');
+        Route::post('/', [NotificationController::class, 'store'])->name('store');
+        Route::get('/{notification}/edit', [NotificationController::class, 'edit'])->name('edit');
+        Route::put('/{notification}', [NotificationController::class, 'update'])->name('update');
+        Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
+        Route::post('/{notification}/complete', [NotificationController::class, 'complete'])->name('complete');
     });
 
     // Reports
