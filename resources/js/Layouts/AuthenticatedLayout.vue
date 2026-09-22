@@ -130,6 +130,12 @@ const navigation = [
                 href: "notifications.index",
                 active: "notifications.*",
             },
+            {
+                label: "Audit Logs",
+                icon: "clipboard-list",
+                href: "audit-logs.index",
+                active: "audit-logs.*",
+            },
         ],
     },
     {

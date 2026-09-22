@@ -17,6 +17,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\RoomTransferController;
 use App\Http\Controllers\ReportController;
 
@@ -276,6 +277,11 @@ Route::middleware('auth')->group(function () {
         Route::put('/{notification}', [NotificationController::class, 'update'])->name('update');
         Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
         Route::post('/{notification}/complete', [NotificationController::class, 'complete'])->name('complete');
+    });
+
+    // Audit Logs (view-only)
+    Route::prefix('audit-logs')->name('audit-logs.')->group(function () {
+        Route::get('/', [AuditLogController::class, 'index'])->name('index');
     });
 
     // Reports
