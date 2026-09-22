@@ -18,10 +18,12 @@ return new class extends Migration
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();
-            $table->foreignId('from_room_id')
+             $table->foreignId('from_room_id')
+                ->nullable()
                 ->constrained('rooms')
                 ->nullOnDelete();
             $table->foreignId('to_room_id')
+                ->nullable()
                 ->constrained('rooms')
                 ->nullOnDelete();
             $table->date('transfer_date');
