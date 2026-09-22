@@ -112,6 +112,12 @@ const navigation = [
                 href: "checkouts.index",
                 active: "checkouts.*",
             },
+            {
+                label: "Expenses",
+                icon: "receipt",
+                href: "expenses.index",
+                active: "expenses.*",
+            },
         ],
     },
     {
