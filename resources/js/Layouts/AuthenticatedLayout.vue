@@ -118,6 +118,12 @@ const navigation = [
                 href: "expenses.index",
                 active: "expenses.*",
             },
+            {
+                label: "Staff",
+                icon: "users",
+                href: "staff.index",
+                active: "staff.*",
+            },
         ],
     },
     {

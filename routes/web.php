@@ -15,6 +15,7 @@ use App\Http\Controllers\LaundryOrderController;
 use App\Http\Controllers\CheckinController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\RoomTransferController;
 use App\Http\Controllers\ReportController;
 
@@ -252,6 +253,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/{expense}', [ExpenseController::class, 'update'])->name('update');
         Route::delete('/{expense}', [ExpenseController::class, 'destroy'])->name('destroy');
         Route::post('/{expense}/complete', [ExpenseController::class, 'complete'])->name('complete');
+    });
+
+    // Staff
+    Route::prefix('staff')->name('staff.')->group(function () {
+        Route::get('/', [StaffController::class, 'index'])->name('index');
+        Route::get('/create', [StaffController::class, 'create'])->name('create');
+        Route::post('/', [StaffController::class, 'store'])->name('store');
+        Route::get('/{staff}/edit', [StaffController::class, 'edit'])->name('edit');
+        Route::put('/{staff}', [StaffController::class, 'update'])->name('update');
+        Route::delete('/{staff}', [StaffController::class, 'destroy'])->name('destroy');
+        Route::post('/{staff}/complete', [StaffController::class, 'complete'])->name('complete');
     });
 
     // Reports
