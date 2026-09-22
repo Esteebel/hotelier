@@ -12,6 +12,7 @@ use App\Http\Controllers\MaintenanceTaskController;
 use App\Http\Controllers\ServiceRequestController;
 use App\Http\Controllers\FoodOrderController;
 use App\Http\Controllers\LaundryOrderController;
+use App\Http\Controllers\CheckinController;
 use App\Http\Controllers\RoomTransferController;
 use App\Http\Controllers\ReportController;
 
@@ -216,6 +217,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/{laundryOrder}', [LaundryOrderController::class, 'update'])->name('update');
         Route::delete('/{laundryOrder}', [LaundryOrderController::class, 'destroy'])->name('destroy');
         Route::post('/{laundryOrder}/complete', [LaundryOrderController::class, 'complete'])->name('complete');
+    });
+
+    // Check-ins
+    Route::prefix('checkins')->name('checkins.')->group(function () {
+        Route::get('/', [CheckinController::class, 'index'])->name('index');
+        Route::get('/create', [CheckinController::class, 'create'])->name('create');
+        Route::post('/', [CheckinController::class, 'store'])->name('store');
+        Route::get('/{checkin}/edit', [CheckinController::class, 'edit'])->name('edit');
+        Route::put('/{checkin}', [CheckinController::class, 'update'])->name('update');
+        Route::delete('/{checkin}', [CheckinController::class, 'destroy'])->name('destroy');
+        Route::post('/{checkin}/complete', [CheckinController::class, 'complete'])->name('complete');
     });
 
     // Reports

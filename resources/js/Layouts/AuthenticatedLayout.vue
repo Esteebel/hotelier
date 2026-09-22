@@ -100,6 +100,12 @@ const navigation = [
                 href: "laundry.index",
                 active: "laundry.*",
             },
+            {
+                label: "Check-ins",
+                icon: "log-in",
+                href: "checkins.index",
+                active: "checkins.*",
+            },
         ],
     },
     {
