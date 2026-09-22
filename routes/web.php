@@ -9,6 +9,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\HousekeepingTaskController;
 use App\Http\Controllers\MaintenanceTaskController;
+use App\Http\Controllers\ServiceRequestController;
 use App\Http\Controllers\RoomTransferController;
 use App\Http\Controllers\ReportController;
 
@@ -180,6 +181,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/{maintenanceTask}', [MaintenanceTaskController::class, 'update'])->name('update');
         Route::delete('/{maintenanceTask}', [MaintenanceTaskController::class, 'destroy'])->name('destroy');
         Route::post('/{maintenanceTask}/complete', [MaintenanceTaskController::class, 'complete'])->name('complete');
+    });
+
+    // Services
+    Route::prefix('services')->name('services.')->group(function () {
+        Route::get('/', [ServiceRequestController::class, 'index'])->name('index');
+        Route::get('/create', [ServiceRequestController::class, 'create'])->name('create');
+        Route::post('/', [ServiceRequestController::class, 'store'])->name('store');
+        Route::get('/{serviceRequest}/edit', [ServiceRequestController::class, 'edit'])->name('edit');
+        Route::put('/{serviceRequest}', [ServiceRequestController::class, 'update'])->name('update');
+        Route::delete('/{serviceRequest}', [ServiceRequestController::class, 'destroy'])->name('destroy');
+        Route::post('/{serviceRequest}/complete', [ServiceRequestController::class, 'complete'])->name('complete');
     });
 
     // Reports

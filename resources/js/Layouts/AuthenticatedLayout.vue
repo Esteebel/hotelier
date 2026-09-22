@@ -82,6 +82,12 @@ const navigation = [
                 href: "maintenance.index",
                 active: "maintenance.*",
             },
+            {
+                label: "Services",
+                icon: "concierge-bell",
+                href: "services.index",
+                active: "services.*",
+            },
         ],
     },
     {
