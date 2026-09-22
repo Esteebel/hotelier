@@ -106,6 +106,12 @@ const navigation = [
                 href: "checkins.index",
                 active: "checkins.*",
             },
+            {
+                label: "Check-outs",
+                icon: "log-out",
+                href: "checkouts.index",
+                active: "checkouts.*",
+            },
         ],
     },
     {
