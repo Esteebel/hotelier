@@ -88,6 +88,12 @@ const navigation = [
                 href: "services.index",
                 active: "services.*",
             },
+            {
+                label: "Restaurant",
+                icon: "utensils",
+                href: "restaurant.index",
+                active: "restaurant.*",
+            },
         ],
     },
     {
