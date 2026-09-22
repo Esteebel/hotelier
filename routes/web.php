@@ -11,6 +11,7 @@ use App\Http\Controllers\HousekeepingTaskController;
 use App\Http\Controllers\MaintenanceTaskController;
 use App\Http\Controllers\ServiceRequestController;
 use App\Http\Controllers\FoodOrderController;
+use App\Http\Controllers\LaundryOrderController;
 use App\Http\Controllers\RoomTransferController;
 use App\Http\Controllers\ReportController;
 
@@ -204,6 +205,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/{foodOrder}', [FoodOrderController::class, 'update'])->name('update');
         Route::delete('/{foodOrder}', [FoodOrderController::class, 'destroy'])->name('destroy');
         Route::post('/{foodOrder}/complete', [FoodOrderController::class, 'complete'])->name('complete');
+    });
+
+    // Laundry
+    Route::prefix('laundry')->name('laundry.')->group(function () {
+        Route::get('/', [LaundryOrderController::class, 'index'])->name('index');
+        Route::get('/create', [LaundryOrderController::class, 'create'])->name('create');
+        Route::post('/', [LaundryOrderController::class, 'store'])->name('store');
+        Route::get('/{laundryOrder}/edit', [LaundryOrderController::class, 'edit'])->name('edit');
+        Route::put('/{laundryOrder}', [LaundryOrderController::class, 'update'])->name('update');
+        Route::delete('/{laundryOrder}', [LaundryOrderController::class, 'destroy'])->name('destroy');
+        Route::post('/{laundryOrder}/complete', [LaundryOrderController::class, 'complete'])->name('complete');
     });
 
     // Reports

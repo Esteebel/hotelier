@@ -62,6 +62,8 @@ class PermissionSeeder extends Seeder
                 PermissionName::ViewServices->value,
                 PermissionName::ManageServices->value,
                 PermissionName::ManageRestaurantOrders->value,
+                PermissionName::ViewLaundry->value,
+                PermissionName::ManageLaundry->value,
                 PermissionName::ViewPayments->value,
                 PermissionName::ManagePayments->value,
                 PermissionName::ViewInvoices->value,

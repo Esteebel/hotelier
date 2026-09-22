@@ -66,6 +66,10 @@ enum PermissionName: string
     // Restaurant / Food Orders
     case ManageRestaurantOrders = 'manage-restaurant-orders';
 
+    // Laundry
+    case ViewLaundry = 'view-laundry';
+    case ManageLaundry = 'manage-laundry';
+
     // Payments
     case ViewPayments = 'view-payments';
     case ManagePayments = 'manage-payments';

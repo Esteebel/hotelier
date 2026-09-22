@@ -94,6 +94,12 @@ const navigation = [
                 href: "restaurant.index",
                 active: "restaurant.*",
             },
+            {
+                label: "Laundry",
+                icon: "shirt",
+                href: "laundry.index",
+                active: "laundry.*",
+            },
         ],
     },
     {
