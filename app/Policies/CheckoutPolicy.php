@@ -10,26 +10,26 @@ class CheckoutPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageCheckouts->value);
     }
 
     public function view(User $user, Checkout $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageCheckouts->value);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageCheckouts->value);
     }
 
     public function update(User $user, Checkout $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageCheckouts->value);
     }
 
     public function delete(User $user, Checkout $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageCheckouts->value);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\PermissionName;
+use App\Models\Staff;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
@@ -12,29 +13,30 @@ class StaffRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user()
-            ?->hasPermissionTo(PermissionName::ManageStaffs->value) ?? false;
+            ?->hasPermissionTo(PermissionName::ManageStaff->value) ?? false;
     }
 
     public function rules(): array
     {
+        $staff = $this->route('staff');
+
         return [
-            'task_number' => ['required', 'string', 'max:30'],
-            'branch_id' => ['required', 'integer', 'exists:hotel_branches,id'],
-            'room_id' => ['required', 'integer', 'exists:rooms,id'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-            'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'task_type' => ['required', Rule::in(['cleaning', 'order', 'restock', 'inspection'])],
-            'due_date' => ['required', 'date'],
-            'status' => ['required', Rule::in(['pending', 'in-progress', 'on-hold', 'completed', 'cancelled'])],
+            'first_name' => ['required', 'string', 'max:80'],
+            'last_name' => ['required', 'string', 'max:80'],
+            'position' => ['required', 'string', 'max:100'],
+            'department' => ['nullable', 'string', 'max:80'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'status' => ['required', Rule::in(['active', 'inactive', 'on_leave'])],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
     public function prepareForValidation(): void
     {
-        if (! $this->has('task_number')) {
+        if (! $this->has('staff_number')) {
             $this->merge([
-                'task_number' => Staff::nextTaskNumber(),
+                'staff_number' => Staff::nextStaffNumber(),
             ]);
         }
     }
@@ -42,7 +44,8 @@ class StaffRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'room_id.exists' => 'The selected room is not on file.',
+            'first_name.required' => 'The staff member first name is required.',
+            'last_name.required' => 'The staff member last name is required.',
         ];
     }
 

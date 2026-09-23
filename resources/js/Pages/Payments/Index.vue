@@ -74,7 +74,7 @@ const methodLabel = (m) =>
         bank_transfer: "Bank Transfer",
         mobile_money: "Mobile Money",
         cheque: "Cheque",
-        credit: "Credit Account",
+        credit_account: "Credit Account",
     })[m] ?? m;
 
 const methodBadge = (m) =>

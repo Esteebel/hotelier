@@ -2,73 +2,48 @@
 
 namespace App\Models;
 
-use App\Support\ContextualBranch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AuditLog extends Model
 {
     use HasFactory;
-    use SoftDeletes;
 
     protected $fillable = [
-        'task_number',
         'branch_id',
-        'room_id',
-        'assigned_to',
-        'priority',
-        'task_type',
-        'due_date',
-        'status',
-        'notes',
-        'requested_by',
-        'handled_by',
-        'handled_at',
+        'user_id',
+        'event',
+        'auditable_type',
+        'auditable_id',
+        'old_values',
+        'new_values',
+        'ip_address',
+        'user_agent',
     ];
 
     protected $casts = [
-        'due_date' => 'date',
-        'handled_at' => 'datetime',
+        'old_values' => 'array',
+        'new_values' => 'array',
     ];
 
-    public function branch(): BelongsTo
+    public function branch(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(HotelBranch::class, 'branch_id');
     }
 
-    public function room(): BelongsTo
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->belongsTo(Room::class);
+        return $this->belongsTo(User::class);
     }
 
-    public function assignee(): BelongsTo
+    public function auditable(): \Illuminate\Database\Eloquent\Relations\MorphTo
     {
-        return $this->belongsTo(User::class, 'assigned_to');
-    }
-
-    public function requester(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'requested_by');
-    }
-
-    public function handler(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'handled_by');
+        return $this->morphTo();
     }
 
     public function scopeForBranch(Builder $query, ?int $branchId): Builder
     {
         return $query->when($branchId, fn (Builder $q) => $q->where('branch_id', $branchId));
-    }
-
-    public static function nextTaskNumber(): string
-    {
-        $branchCode = ContextualBranch::current()?->code ?? 'HQ';
-        $count = static::withTrashed()->count() + 1;
-
-        return $branchCode.'-HK-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
     }
 }

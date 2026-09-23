@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Enums\PermissionName;
+use App\Models\HousekeepingTask;
+use App\Support\ContextualBranch;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
@@ -23,7 +25,9 @@ class HousekeepingTaskRequest extends FormRequest
             'room_id' => ['required', 'integer', 'exists:rooms,id'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
             'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'task_type' => ['required', Rule::in(['cleaning', 'maintenance', 'restock', 'inspection'])],
+            'task_type' => ['required', Rule::in([
+                'cleaning', 'deep_cleaning', 'restocking', 'inspection', 'maintenance', 'restock',
+            ])],
             'due_date' => ['required', 'date'],
             'status' => ['required', Rule::in(['pending', 'in-progress', 'on-hold', 'completed', 'cancelled'])],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -32,10 +36,22 @@ class HousekeepingTaskRequest extends FormRequest
 
     public function prepareForValidation(): void
     {
+        $merge = [];
+
         if (! $this->has('task_number')) {
-            $this->merge([
-                'task_number' => HousekeepingTask::nextTaskNumber(),
-            ]);
+            $merge['task_number'] = HousekeepingTask::nextTaskNumber();
+        }
+
+        if (! $this->has('branch_id')) {
+            $merge['branch_id'] = ContextualBranch::id();
+        }
+
+        if (! $this->has('status')) {
+            $merge['status'] = 'pending';
+        }
+
+        if ($merge !== []) {
+            $this->merge($merge);
         }
     }
 

@@ -2,42 +2,51 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\PermissionName;
 use App\Http\Requests\StaffRequest;
-use App\Models\Reservation;
-use App\Models\Room;
 use App\Models\Staff;
 use App\Support\ContextualBranch;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class StaffController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', Staff::class);
 
-        $transfers = Staff::query()
-            ->with([
-                'branch:id,name',
-                'reservation:id,reservation_number',
-                'fromRoom:id,room_number',
-                'toRoom:id,room_number',
-                'requester:id,first_name,last_name',
-            ])
-            ->forBranch(ContextualBranch::id())
-            ->when(request('search'), fn ($q, $s) => $q
-                ->where('transfer_number', 'like', "%{$s}%")
-                ->orWhere('reason', 'like', "%{$s}%"))
-            ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
-            ->latest('due_date')
-            ->paginate(12)
+        $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
+
+        $staff = Staff::query()
+            ->with(['branch:id,name'])
+            ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
+            ->when(
+                $request->filled('search'),
+                fn ($query) => $query->where(
+                    fn ($q) => $q
+                        ->where('staff_number', 'like', '%'.$request->string('search').'%')
+                        ->orWhere('first_name', 'like', '%'.$request->string('search').'%')
+                        ->orWhere('last_name', 'like', '%'.$request->string('search').'%')
+                        ->orWhere('position', 'like', '%'.$request->string('search').'%'),
+                ),
+            )
+            ->when(
+                $request->filled('status'),
+                fn ($query) => $query->where('status', $request->string('status')),
+            )
+            ->when(
+                $request->filled('department'),
+                fn ($query) => $query->where('department', $request->string('department')),
+            )
+            ->latest()
+            ->paginate(15)
             ->withQueryString();
 
-        return Inertia::render('RoomTransfers/Index', [
-            'transfers' => $transfers,
-            'filters' => request()->only(['search', 'status']),
+        return Inertia::render('Staff/Index', [
+            'staff' => $staff,
+            'filters' => $request->only(['search', 'status', 'department', 'branch_id']),
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
@@ -45,24 +54,8 @@ class StaffController extends Controller
     {
         $this->authorize('create', Staff::class);
 
-        $branchId = ContextualBranch::id();
-
-        $reservations = Reservation::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->whereIn('status', ['checked-in', 'pending'])
-            ->with('room:id,room_number')
-            ->latest()
-            ->limit(200)
-            ->get(['id', 'reservation_number', 'guest_id', 'room_id', 'status']);
-
-        $rooms = Room::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->orderBy('room_number')
-            ->get(['id', 'room_number', 'branch_id']);
-
-        return Inertia::render('RoomTransfers/Create', [
-            'reservations' => $reservations,
-            'rooms' => $rooms,
+        return Inertia::render('Staff/Create', [
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
@@ -71,60 +64,45 @@ class StaffController extends Controller
         $this->authorize('create', Staff::class);
 
         $data = $request->validated();
-        $data['transfer_number'] = Staff::nextTransferNumber();
+        $data['staff_number'] = Staff::nextStaffNumber();
         $data['branch_id'] = ContextualBranch::id();
-        $data['requested_by'] = $request->user()->id;
-        $data['status'] = 'pending';
 
         Staff::create($data);
 
         return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer requested.');
+            ->route('staff.index')
+            ->with('success', 'Staff member added successfully.');
     }
 
-    public function edit(Staff $roomTransfer): Response
+    public function edit(Staff $staff): Response
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $staff);
 
-        return Inertia::render('RoomTransfers/Edit', [
-            'transfer' => $roomTransfer,
-            'reservations' => Reservation::query()
-                ->whereIn('status', ['checked-in', 'pending'])
-                ->with('room:id,room_number')
-                ->latest()
-                ->limit(200)
-                ->get(['id', 'reservation_number', 'guest_name', 'room_id', 'status']),
-            'rooms' => Room::query()
-                ->forBranch($roomTransfer->branch_id)
-                ->orderBy('room_number')
-                ->get(['id', 'room_number', 'branch_id']),
+        return Inertia::render('Staff/Edit', [
+            'staff' => $staff,
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
-    public function update(StaffRequest $request, Staff $roomTransfer): RedirectResponse
+    public function update(StaffRequest $request, Staff $staff): RedirectResponse
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $staff);
 
-        $roomTransfer->update($request->validated());
+        $staff->update($request->validated());
 
         return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer updated.');
+            ->route('staff.index')
+            ->with('success', 'Staff member updated successfully.');
     }
 
-    public function complete(Staff $roomTransfer): RedirectResponse
+    public function destroy(Staff $staff): RedirectResponse
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('delete', $staff);
 
-        $roomTransfer->forceFill([
-            'status' => 'completed',
-            'handled_by' => auth()->id(),
-            'completed_at' => now(),
-        ])->save();
+        $staff->delete();
 
         return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer completed.');
+            ->route('staff.index')
+            ->with('success', 'Staff member removed successfully.');
     }
 }

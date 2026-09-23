@@ -89,7 +89,7 @@ class Reservation extends Model
     {
         return $query->whereNotIn('status', [
             ReservationStatus::Cancelled->value,
-            ReservationStatus::Checkedout->value,
+            ReservationStatus::CheckedOut->value,
             ReservationStatus::NoShow->value,
         ]);
     }

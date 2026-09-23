@@ -2,42 +2,61 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\PermissionName;
+use App\Enums\RoomStatus;
 use App\Http\Requests\CheckoutRequest;
+use App\Models\Checkout;
+use App\Models\Guest;
+use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
-use App\Models\Checkout;
 use App\Support\ContextualBranch;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class CheckoutController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', Checkout::class);
 
-        $transfers = Checkout::query()
+        $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
+
+        $checkouts = Checkout::query()
             ->with([
                 'branch:id,name',
                 'reservation:id,reservation_number',
-                'fromRoom:id,room_number',
-                'toRoom:id,room_number',
-                'requester:id,first_name,last_name',
+                'room:id,room_number',
+                'guest:id,first_name,last_name',
+                'processor:id,first_name,last_name',
             ])
-            ->forBranch(ContextualBranch::id())
-            ->when(request('search'), fn ($q, $s) => $q
-                ->where('transfer_number', 'like', "%{$s}%")
-                ->orWhere('reason', 'like', "%{$s}%"))
-            ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
-            ->latest('due_date')
-            ->paginate(12)
+            ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
+            ->when(
+                $request->filled('search'),
+                fn ($query) => $query->where(
+                    fn ($q) => $q
+                        ->where('checkout_number', 'like', '%'.$request->string('search').'%')
+                        ->orWhereHas('guest', fn ($x) => $x
+                            ->where('first_name', 'like', '%'.$request->string('search').'%')
+                            ->orWhere('last_name', 'like', '%'.$request->string('search').'%'))
+                        ->orWhereHas('room', fn ($x) => $x->where('room_number', 'like', '%'.$request->string('search').'%')),
+                ),
+            )
+            ->when(
+                $request->filled('status'),
+                fn ($query) => $query->where('status', $request->string('status')),
+            )
+            ->latest()
+            ->paginate(15)
             ->withQueryString();
 
-        return Inertia::render('RoomTransfers/Index', [
-            'transfers' => $transfers,
-            'filters' => request()->only(['search', 'status']),
+        return Inertia::render('Checkouts/Index', [
+            'checkouts' => $checkouts,
+            'filters' => $request->only(['search', 'status', 'branch_id']),
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
@@ -49,20 +68,27 @@ class CheckoutController extends Controller
 
         $reservations = Reservation::query()
             ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->whereIn('status', ['checked-in', 'pending'])
-            ->with('room:id,room_number')
+            ->where('status', 'checked_in')
+            ->with(['guest:id,first_name,last_name', 'room:id,room_number'])
             ->latest()
-            ->limit(200)
-            ->get(['id', 'reservation_number', 'guest_id', 'room_id', 'status']);
+            ->get(['id', 'reservation_number', 'guest_id', 'room_id', 'check_out']);
 
         $rooms = Room::query()
             ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->where('status', RoomStatus::Occupied->value)
             ->orderBy('room_number')
-            ->get(['id', 'room_number', 'branch_id']);
+            ->get(['id', 'room_number', 'room_type_id']);
 
-        return Inertia::render('RoomTransfers/Create', [
+        $guests = Guest::query()
+            ->where('status', 'active')
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name']);
+
+        return Inertia::render('Checkouts/Create', [
             'reservations' => $reservations,
             'rooms' => $rooms,
+            'guests' => $guests,
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
@@ -70,61 +96,122 @@ class CheckoutController extends Controller
     {
         $this->authorize('create', Checkout::class);
 
-        $data = $request->validated();
-        $data['transfer_number'] = Checkout::nextTransferNumber();
-        $data['branch_id'] = ContextualBranch::id();
-        $data['requested_by'] = $request->user()->id;
-        $data['status'] = 'pending';
+        DB::beginTransaction();
 
-        Checkout::create($data);
+        try {
+            $data = $request->validated();
+            $data['branch_id'] = ContextualBranch::id();
+            $data['processed_by'] = $request->user()->id;
+            $data['checked_out_at'] = now();
+            $data['status'] = 'completed';
 
-        return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer requested.');
+            // Calculate totals from reservation and payments
+            $reservation = Reservation::with('payments')->findOrFail($data['reservation_id']);
+            $totalPaid = $reservation->payments()->where('status', 'completed')->sum('amount');
+            $balanceDue = max(0, $reservation->total_amount - $totalPaid);
+
+            $data['total_charges'] = $reservation->total_amount;
+            $data['total_paid'] = $totalPaid;
+            $data['balance_due'] = $balanceDue;
+
+            $checkout = Checkout::create($data);
+
+            // Update reservation status
+            Reservation::where('id', $data['reservation_id'])
+                ->update(['status' => 'checked_out']);
+
+            // Update room status to dirty (needs cleaning)
+            Room::where('id', $data['room_id'])
+                ->update(['status' => RoomStatus::Dirty->value]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('checkouts.index')
+                ->with('success', 'Guest checked out successfully. Balance due: '.$data['balance_due']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return back()
+                ->withInput()
+                ->withErrors(['checkout_number' => 'Check-out failed: '.$e->getMessage()]);
+        }
     }
 
-    public function edit(Checkout $roomTransfer): Response
+    public function show(Checkout $checkout): Response
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('view', $checkout);
 
-        return Inertia::render('RoomTransfers/Edit', [
-            'transfer' => $roomTransfer,
-            'reservations' => Reservation::query()
-                ->whereIn('status', ['checked-in', 'pending'])
-                ->with('room:id,room_number')
-                ->latest()
-                ->limit(200)
-                ->get(['id', 'reservation_number', 'guest_name', 'room_id', 'status']),
-            'rooms' => Room::query()
-                ->forBranch($roomTransfer->branch_id)
-                ->orderBy('room_number')
-                ->get(['id', 'room_number', 'branch_id']),
+        $checkout->load([
+            'branch:id,name',
+            'reservation:id,reservation_number,check_in,check_out,total_amount',
+            'room:id,room_number,room_type_id',
+            'guest:id,first_name,last_name,email,phone',
+            'processor:id,first_name,last_name',
+        ]);
+
+        return Inertia::render('Checkouts/Show', [
+            'checkout' => $checkout,
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
-    public function update(CheckoutRequest $request, Checkout $roomTransfer): RedirectResponse
+    public function edit(Checkout $checkout): Response
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $checkout);
 
-        $roomTransfer->update($request->validated());
+        $checkout->load([
+            'reservation:id,reservation_number',
+            'room:id,room_number',
+            'guest:id,first_name,last_name',
+        ]);
 
-        return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer updated.');
+        return Inertia::render('Checkouts/Edit', [
+            'checkout' => $checkout,
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
+        ]);
     }
 
-    public function complete(Checkout $roomTransfer): RedirectResponse
+    public function update(CheckoutRequest $request, Checkout $checkout): RedirectResponse
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $checkout);
 
-        $roomTransfer->forceFill([
-            'status' => 'completed',
-            'handled_by' => auth()->id(),
-            'completed_at' => now(),
-        ])->save();
+        $checkout->update($request->validated());
 
         return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer completed.');
+            ->route('checkouts.index')
+            ->with('success', 'Check-out updated successfully.');
+    }
+
+    public function destroy(Checkout $checkout): RedirectResponse
+    {
+        $this->authorize('delete', $checkout);
+
+        DB::beginTransaction();
+
+        try {
+            // Restore room to occupied if checkout is being cancelled
+            if ($checkout->status === 'completed') {
+                Room::where('id', $checkout->room_id)
+                    ->update(['status' => RoomStatus::Occupied->value]);
+
+                Reservation::where('id', $checkout->reservation_id)
+                    ->update(['status' => 'checked_in']);
+            }
+
+            $checkout->delete();
+
+            DB::commit();
+
+            return redirect()
+                ->route('checkouts.index')
+                ->with('success', 'Check-out cancelled successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return back()->withErrors(['checkout_number' => 'Could not cancel check-out.']);
+        }
     }
 }

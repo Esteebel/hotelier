@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\PermissionName;
+use App\Models\Expense;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
@@ -17,24 +18,23 @@ class ExpenseRequest extends FormRequest
 
     public function rules(): array
     {
+        $expense = $this->route('expense');
+
         return [
-            'task_number' => ['required', 'string', 'max:30'],
-            'branch_id' => ['required', 'integer', 'exists:hotel_branches,id'],
-            'room_id' => ['required', 'integer', 'exists:rooms,id'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-            'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'task_type' => ['required', Rule::in(['cleaning', 'order', 'restock', 'inspection'])],
-            'due_date' => ['required', 'date'],
-            'status' => ['required', Rule::in(['pending', 'in-progress', 'on-hold', 'completed', 'cancelled'])],
+            'description' => ['required', 'string', 'max:255'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'category' => ['required', 'string', 'max:80'],
+            'expense_date' => ['required', 'date'],
+            'reference' => ['nullable', 'string', 'max:60'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
     public function prepareForValidation(): void
     {
-        if (! $this->has('task_number')) {
+        if (! $this->has('expense_number')) {
             $this->merge([
-                'task_number' => Expense::nextTaskNumber(),
+                'expense_number' => Expense::nextExpenseNumber(),
             ]);
         }
     }
@@ -42,7 +42,7 @@ class ExpenseRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'room_id.exists' => 'The selected room is not on file.',
+            'amount.min' => 'The expense amount must be at least 0.01.',
         ];
     }
 

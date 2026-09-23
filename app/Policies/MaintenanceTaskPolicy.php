@@ -10,26 +10,26 @@ class MaintenanceTaskPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ViewMaintenance->value);
     }
 
     public function view(User $user, MaintenanceTask $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ViewMaintenance->value);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageMaintenance->value);
     }
 
     public function update(User $user, MaintenanceTask $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageMaintenance->value);
     }
 
     public function delete(User $user, MaintenanceTask $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageMaintenance->value);
     }
 }

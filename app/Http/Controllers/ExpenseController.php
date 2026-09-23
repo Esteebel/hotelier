@@ -2,42 +2,50 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\PermissionName;
 use App\Http\Requests\ExpenseRequest;
-use App\Models\Reservation;
-use App\Models\Room;
 use App\Models\Expense;
 use App\Support\ContextualBranch;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ExpenseController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', Expense::class);
 
-        $transfers = Expense::query()
-            ->with([
-                'branch:id,name',
-                'reservation:id,reservation_number',
-                'fromRoom:id,room_number',
-                'toRoom:id,room_number',
-                'requester:id,first_name,last_name',
-            ])
-            ->forBranch(ContextualBranch::id())
-            ->when(request('search'), fn ($q, $s) => $q
-                ->where('transfer_number', 'like', "%{$s}%")
-                ->orWhere('reason', 'like', "%{$s}%"))
-            ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
-            ->latest('due_date')
-            ->paginate(12)
+        $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
+
+        $expenses = Expense::query()
+            ->with(['branch:id,name', 'creator:id,first_name,last_name'])
+            ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
+            ->when(
+                $request->filled('search'),
+                fn ($query) => $query->where(
+                    fn ($q) => $q
+                        ->where('expense_number', 'like', '%'.$request->string('search').'%')
+                        ->orWhere('description', 'like', '%'.$request->string('search').'%')
+                        ->orWhere('category', 'like', '%'.$request->string('search').'%'),
+                ),
+            )
+            ->when(
+                $request->filled('status'),
+                fn ($query) => $query->where('status', $request->string('status')),
+            )
+            ->when(
+                $request->filled('category'),
+                fn ($query) => $query->where('category', $request->string('category')),
+            )
+            ->latest()
+            ->paginate(15)
             ->withQueryString();
 
-        return Inertia::render('RoomTransfers/Index', [
-            'transfers' => $transfers,
-            'filters' => request()->only(['search', 'status']),
+        return Inertia::render('Expenses/Index', [
+            'expenses' => $expenses,
+            'filters' => $request->only(['search', 'status', 'category', 'branch_id']),
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
@@ -45,24 +53,8 @@ class ExpenseController extends Controller
     {
         $this->authorize('create', Expense::class);
 
-        $branchId = ContextualBranch::id();
-
-        $reservations = Reservation::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->whereIn('status', ['checked-in', 'pending'])
-            ->with('room:id,room_number')
-            ->latest()
-            ->limit(200)
-            ->get(['id', 'reservation_number', 'guest_id', 'room_id', 'status']);
-
-        $rooms = Room::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->orderBy('room_number')
-            ->get(['id', 'room_number', 'branch_id']);
-
-        return Inertia::render('RoomTransfers/Create', [
-            'reservations' => $reservations,
-            'rooms' => $rooms,
+        return Inertia::render('Expenses/Create', [
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
@@ -71,60 +63,47 @@ class ExpenseController extends Controller
         $this->authorize('create', Expense::class);
 
         $data = $request->validated();
-        $data['transfer_number'] = Expense::nextTransferNumber();
+        $data['expense_number'] = Expense::nextExpenseNumber();
         $data['branch_id'] = ContextualBranch::id();
-        $data['requested_by'] = $request->user()->id;
-        $data['status'] = 'pending';
+        $data['created_by'] = $request->user()->id;
+        $data['status'] = 'completed';
 
         Expense::create($data);
 
         return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer requested.');
+            ->route('expenses.index')
+            ->with('success', 'Expense recorded successfully.');
     }
 
-    public function edit(Expense $roomTransfer): Response
+    public function edit(Expense $expense): Response
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $expense);
 
-        return Inertia::render('RoomTransfers/Edit', [
-            'transfer' => $roomTransfer,
-            'reservations' => Reservation::query()
-                ->whereIn('status', ['checked-in', 'pending'])
-                ->with('room:id,room_number')
-                ->latest()
-                ->limit(200)
-                ->get(['id', 'reservation_number', 'guest_name', 'room_id', 'status']),
-            'rooms' => Room::query()
-                ->forBranch($roomTransfer->branch_id)
-                ->orderBy('room_number')
-                ->get(['id', 'room_number', 'branch_id']),
+        return Inertia::render('Expenses/Edit', [
+            'expense' => $expense,
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
-    public function update(ExpenseRequest $request, Expense $roomTransfer): RedirectResponse
+    public function update(ExpenseRequest $request, Expense $expense): RedirectResponse
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $expense);
 
-        $roomTransfer->update($request->validated());
+        $expense->update($request->validated());
 
         return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer updated.');
+            ->route('expenses.index')
+            ->with('success', 'Expense updated successfully.');
     }
 
-    public function complete(Expense $roomTransfer): RedirectResponse
+    public function destroy(Expense $expense): RedirectResponse
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('delete', $expense);
 
-        $roomTransfer->forceFill([
-            'status' => 'completed',
-            'handled_by' => auth()->id(),
-            'completed_at' => now(),
-        ])->save();
+        $expense->delete();
 
         return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer completed.');
+            ->route('expenses.index')
+            ->with('success', 'Expense deleted successfully.');
     }
 }

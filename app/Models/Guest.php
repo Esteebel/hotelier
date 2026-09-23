@@ -28,13 +28,16 @@ class Guest extends Model
         'id_number',
         'id_type',
         'address',
+        'company',
         'notes',
         'is_vip',
+        'status',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
         'is_vip' => 'boolean',
+        'status' => GuestStatus::class,
     ];
 
     public function branch(): BelongsTo
@@ -62,23 +65,11 @@ class Guest extends Model
         return trim($this->first_name.' '.$this->last_name);
     }
 
-    public function getStatusAttribute(): string
-    {
-        $active = $this->reservations()
-            ->where('branch_id', ContextualBranch::id())
-            ->whereIn('status', [
-                'confirmed',
-                'checked_in',
-                'extended',
-            ])
-            ->exists();
-
-        return $active ? GuestStatus::Active->value : GuestStatus::Former->value;
-    }
-
     public function getStatusLabelAttribute(): string
     {
-        return GuestStatus::labels()[$this->status] ?? ucfirst($this->status);
+        return $this->status
+            ? (GuestStatus::labels()[$this->status->value] ?? ucfirst($this->status->value))
+            : 'Active';
     }
 
     protected static function booted(): void

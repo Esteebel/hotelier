@@ -2,42 +2,44 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\PermissionName;
 use App\Http\Requests\FoodOrderRequest;
-use App\Models\Reservation;
-use App\Models\Room;
 use App\Models\FoodOrder;
+use App\Models\Room;
+use App\Models\Guest;
 use App\Support\ContextualBranch;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class FoodOrderController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $this->authorize('viewAny', FoodOrder::class);
 
-        $transfers = FoodOrder::query()
-            ->with([
-                'branch:id,name',
-                'reservation:id,reservation_number',
-                'fromRoom:id,room_number',
-                'toRoom:id,room_number',
-                'requester:id,first_name,last_name',
-            ])
-            ->forBranch(ContextualBranch::id())
-            ->when(request('search'), fn ($q, $s) => $q
-                ->where('transfer_number', 'like', "%{$s}%")
-                ->orWhere('reason', 'like', "%{$s}%"))
-            ->when(request('status'), fn ($q, $s) => $q->where('status', $s))
-            ->latest('due_date')
-            ->paginate(12)
+        $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
+
+        $orders = FoodOrder::query()
+            ->with(['branch:id,name', 'room:id,room_number', 'guest:id,first_name,last_name'])
+            ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
+            ->when(
+                $request->filled('search'),
+                fn ($query) => $query->where(
+                    fn ($q) => $q
+                        ->where('order_number', 'like', '%'.$request->string('search').'%')
+                        ->orWhere('order_type', 'like', '%'.$request->string('search').'%'),
+                ),
+            )
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
+            ->latest()
+            ->paginate(15)
             ->withQueryString();
 
-        return Inertia::render('RoomTransfers/Index', [
-            'transfers' => $transfers,
-            'filters' => request()->only(['search', 'status']),
+        return Inertia::render('Restaurant/Index', [
+            'orders' => $orders,
+            'filters' => $request->only(['search', 'status', 'branch_id']),
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
@@ -46,23 +48,13 @@ class FoodOrderController extends Controller
         $this->authorize('create', FoodOrder::class);
 
         $branchId = ContextualBranch::id();
+        $rooms = Room::query()->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->orderBy('room_number')->get(['id', 'room_number']);
+        $guests = Guest::query()->where('status', 'active')->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
 
-        $reservations = Reservation::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->whereIn('status', ['checked-in', 'pending'])
-            ->with('room:id,room_number')
-            ->latest()
-            ->limit(200)
-            ->get(['id', 'reservation_number', 'guest_id', 'room_id', 'status']);
-
-        $rooms = Room::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->orderBy('room_number')
-            ->get(['id', 'room_number', 'branch_id']);
-
-        return Inertia::render('RoomTransfers/Create', [
-            'reservations' => $reservations,
+        return Inertia::render('Restaurant/Create', [
             'rooms' => $rooms,
+            'guests' => $guests,
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
@@ -71,60 +63,56 @@ class FoodOrderController extends Controller
         $this->authorize('create', FoodOrder::class);
 
         $data = $request->validated();
-        $data['transfer_number'] = FoodOrder::nextTransferNumber();
+        $data['order_number'] = FoodOrder::nextOrderNumber();
         $data['branch_id'] = ContextualBranch::id();
-        $data['requested_by'] = $request->user()->id;
+        $data['created_by'] = $request->user()->id;
         $data['status'] = 'pending';
 
         FoodOrder::create($data);
 
-        return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer requested.');
+        return redirect()->route('restaurant.index')->with('success', 'Food order created.');
     }
 
-    public function edit(FoodOrder $roomTransfer): Response
+    public function edit(FoodOrder $foodOrder): Response
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $foodOrder);
 
-        return Inertia::render('RoomTransfers/Edit', [
-            'transfer' => $roomTransfer,
-            'reservations' => Reservation::query()
-                ->whereIn('status', ['checked-in', 'pending'])
-                ->with('room:id,room_number')
-                ->latest()
-                ->limit(200)
-                ->get(['id', 'reservation_number', 'guest_name', 'room_id', 'status']),
-            'rooms' => Room::query()
-                ->forBranch($roomTransfer->branch_id)
-                ->orderBy('room_number')
-                ->get(['id', 'room_number', 'branch_id']),
+        $branchId = ContextualBranch::id();
+        $rooms = Room::query()->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->orderBy('room_number')->get(['id', 'room_number']);
+        $guests = Guest::query()->where('status', 'active')->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
+
+        return Inertia::render('Restaurant/Edit', [
+            'order' => $foodOrder,
+            'rooms' => $rooms,
+            'guests' => $guests,
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
 
-    public function update(FoodOrderRequest $request, FoodOrder $roomTransfer): RedirectResponse
+    public function update(FoodOrderRequest $request, FoodOrder $foodOrder): RedirectResponse
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $foodOrder);
 
-        $roomTransfer->update($request->validated());
+        $foodOrder->update($request->validated());
 
-        return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer updated.');
+        return redirect()->route('restaurant.index')->with('success', 'Food order updated.');
     }
 
-    public function complete(FoodOrder $roomTransfer): RedirectResponse
+    public function complete(FoodOrder $foodOrder): RedirectResponse
     {
-        $this->authorize('update', $roomTransfer);
+        $this->authorize('update', $foodOrder);
 
-        $roomTransfer->forceFill([
-            'status' => 'completed',
-            'handled_by' => auth()->id(),
-            'completed_at' => now(),
-        ])->save();
+        $foodOrder->update(['status' => 'completed']);
 
-        return redirect()
-            ->route('room-transfers.index')
-            ->with('success', 'Room transfer completed.');
+        return redirect()->route('restaurant.index')->with('success', 'Food order completed.');
+    }
+
+    public function destroy(FoodOrder $foodOrder): RedirectResponse
+    {
+        $this->authorize('delete', $foodOrder);
+
+        $foodOrder->delete();
+
+        return redirect()->route('restaurant.index')->with('success', 'Food order deleted.');
     }
 }

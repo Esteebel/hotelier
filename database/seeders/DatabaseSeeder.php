@@ -62,5 +62,8 @@ class DatabaseSeeder extends Seeder
         collect([$superAdmin, $hotelAdmin, $manager, $receptionist, $testUser])->each(
             fn (User $user) => $user->branches()->syncWithoutDetaching($branches->pluck('id')),
         );
+
+        // 6. Demo data (guests, reservations, payments, invoices, expenses, staff)
+        $this->call(DemoDataSeeder::class);
     }
 }

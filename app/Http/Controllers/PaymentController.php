@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\PaymentRequest;
-use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Support\ContextualBranch;
@@ -21,7 +20,7 @@ class PaymentController extends Controller
         $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
 
         $payments = Payment::query()
-            ->with(['reservation:id,reservation_code', 'invoice:id,invoice_number'])
+            ->with(['reservation:id,reservation_number', 'guest:id,first_name,last_name'])
             ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
             ->when(
                 $request->filled('status'),
@@ -35,8 +34,8 @@ class PaymentController extends Controller
                 $request->filled('search'),
                 fn ($query) => $query->where(
                     fn ($q) => $q
-                        ->where('payment_reference', 'like', '%'.$request->string('search').'%')
-                        ->orWhereHas('invoice', fn ($x) => $x->where('invoice_number', 'like', '%'.$request->string('search').'%')),
+                        ->where('reference', 'like', '%'.$request->string('search').'%')
+                        ->orWhere('payment_number', 'like', '%'.$request->string('search').'%'),
                 ),
             )
             ->latest()
@@ -45,10 +44,10 @@ class PaymentController extends Controller
             ->through(
                 fn (Payment $payment) => [
                     'id' => $payment->id,
-                    'reference' => $payment->payment_reference,
+                    'payment_number' => $payment->payment_number,
+                    'reference' => $payment->reference,
                     'guest' => $payment->guest?->full_name,
-                    'reservation' => $payment->reservation?->reservation_code,
-                    'invoice' => $payment->invoice?->invoice_number,
+                    'reservation' => $payment->reservation?->reservation_number,
                     'method' => $payment->method->value,
                     'method_label' => $payment->method->label(),
                     'method_badge' => $payment->method->badgeClass(),
@@ -72,8 +71,8 @@ class PaymentController extends Controller
         $this->authorize('create', Payment::class);
 
         return Inertia::render('Payments/Create', [
+            'guests' => $this->guestOptions(),
             'reservations' => $this->reservationOptions(),
-            'invoices' => $this->invoiceOptions(),
             'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
@@ -82,7 +81,10 @@ class PaymentController extends Controller
     {
         $this->authorize('create', Payment::class);
 
-        Payment::create($request->validated());
+        $data = $request->validated();
+        $data['received_by'] = $request->user()?->id;
+
+        Payment::create($data);
 
         return redirect()
             ->route('payments.index')
@@ -99,17 +101,16 @@ class PaymentController extends Controller
                 'branch_id' => $payment->branch_id,
                 'guest_id' => $payment->guest_id,
                 'reservation_id' => $payment->reservation_id,
-                'invoice_id' => $payment->invoice_id,
-                'payment_reference' => $payment->payment_reference,
+                'payment_number' => $payment->payment_number,
+                'reference' => $payment->reference,
                 'method' => $payment->method->value,
                 'amount' => $payment->amount,
-                'currency' => $payment->currency,
                 'paid_on' => $payment->paid_on?->toDateString(),
                 'notes' => $payment->notes,
                 'status' => $payment->status->value,
             ],
+            'guests' => $this->guestOptions(),
             'reservations' => $this->reservationOptions(),
-            'invoices' => $this->invoiceOptions(),
             'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
@@ -137,28 +138,28 @@ class PaymentController extends Controller
     }
 
     /**
-     * @return array<int, array{id: int, reservation_code: string}>
+     * @return array<int, array{id: int, reservation_number: string}>
      */
     private function reservationOptions(): array
     {
         return Reservation::query()
             ->whereIn('status', ['confirmed', 'checked_in'])
             ->orderByDesc('check_in')
-            ->get(['id', 'reservation_code'])
-            ->map(fn (Reservation $res) => $res->only(['id', 'reservation_code']))
+            ->get(['id', 'reservation_number'])
+            ->map(fn (Reservation $res) => $res->only(['id', 'reservation_number']))
             ->all();
     }
 
     /**
-     * @return array<int, array{id: int, invoice_number: string}>
+     * @return array<int, array{id: int, full_name: string}>
      */
-    private function invoiceOptions(): array
+    private function guestOptions(): array
     {
-        return Invoice::query()
-            ->whereIn('status', ['sent', 'partially_paid'])
-            ->orderByDesc('issued_on')
-            ->get(['id', 'invoice_number'])
-            ->map(fn (Invoice $invoice) => $invoice->only(['id', 'invoice_number']))
+        return \App\Models\Guest::query()
+            ->where('status', 'active')
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name'])
+            ->map(fn (\App\Models\Guest $guest) => $guest->only(['id', 'full_name']))
             ->all();
     }
 }

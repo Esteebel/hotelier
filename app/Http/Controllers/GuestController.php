@@ -48,9 +48,10 @@ class GuestController extends Controller
                     'status_label' => $guest->status_label,
                     'badge_class' => $guest->status->badgeClass(),
                     'is_vip' => $guest->is_vip,
-                    'has_balance' => $guest->has_balance,
-                    'stays_count' => $guest->stays_count,
-                    'last_stay' => $guest->last_stay?->toDateString(),
+                    'first_name' => $guest->first_name,
+                    'last_name' => $guest->last_name,
+                    'id_number' => $guest->id_number,
+                    'id_type' => $guest->id_type,
                 ],
             );
 

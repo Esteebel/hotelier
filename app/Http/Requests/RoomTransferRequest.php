@@ -11,7 +11,7 @@ class RoomTransferRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user()?->hasPermissionTo(
-            \App\Enums\PermissionName::ManageTransfers->value,
+            \App\Enums\PermissionName::ManageRoomTransfers->value,
         ) ?? false;
     }
 

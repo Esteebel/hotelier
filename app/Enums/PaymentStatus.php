@@ -10,6 +10,20 @@ enum PaymentStatus: string
     case Refunded = 'refunded';
     case Void = 'void';
 
+    /**
+     * @return array<string, string>
+     */
+    public static function labels(): array
+    {
+        return [
+            self::Pending->value => 'Pending',
+            self::Completed->value => 'Completed',
+            self::Failed->value => 'Failed',
+            self::Refunded->value => 'Refunded',
+            self::Void->value => 'Void',
+        ];
+    }
+
     public function badgeClass(): string
     {
         return match ($this) {

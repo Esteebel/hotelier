@@ -8,9 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('laundry_orders');
+
         Schema::create('laundry_orders', function (Blueprint $table) {
             $table->id();
-            $table->string('task_number', 30)->unique();
+            $table->string('order_number', 30)->unique();
             $table->foreignId('branch_id')
                 ->constrained('hotel_branches')
                 ->cascadeOnDelete();
@@ -18,31 +20,24 @@ return new class extends Migration
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();
-            $table->foreignId('assigned_to')
+            $table->foreignId('guest_id')
                 ->nullable()
-                ->constrained('users')
+                ->constrained()
                 ->nullOnDelete();
-            $table->string('priority', 20)->default('normal');
-            $table->string('task_type', 40);
-            $table->date('due_date');
+            $table->json('items')->nullable();
+            $table->decimal('total_amount', 12, 2)->default(0);
             $table->string('status', 20)->default('pending');
-            $table->string('reason', 255)->nullable();
+            $table->date('pickup_date')->nullable();
+            $table->date('delivery_date')->nullable();
             $table->text('notes')->nullable();
-            $table->foreignId('requested_by')
+            $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
-            $table->foreignId('handled_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->timestamp('handled_at')->nullable();
             $table->softDeletes();
             $table->timestamps();
 
             $table->index(['branch_id', 'status']);
-            $table->index(['branch_id', 'due_date']);
-            $table->index(['assigned_to']);
             $table->index(['room_id']);
         });
     }

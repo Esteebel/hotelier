@@ -8,42 +8,43 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('checkouts');
+
         Schema::create('checkouts', function (Blueprint $table) {
             $table->id();
-            $table->string('task_number', 30)->unique();
+            $table->string('checkout_number', 30)->unique();
             $table->foreignId('branch_id')
                 ->constrained('hotel_branches')
                 ->cascadeOnDelete();
+            $table->foreignId('reservation_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
             $table->foreignId('room_id')
                 ->nullable()
                 ->constrained()
                 ->nullOnDelete();
-            $table->foreignId('assigned_to')
+            $table->foreignId('guest_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
+            $table->foreignId('processed_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
-            $table->string('priority', 20)->default('normal');
-            $table->string('task_type', 40);
-            $table->date('due_date');
-            $table->string('status', 20)->default('pending');
-            $table->string('reason', 255)->nullable();
+            $table->timestamp('checked_out_at');
+            $table->decimal('total_charges', 12, 2)->default(0);
+            $table->decimal('total_paid', 12, 2)->default(0);
+            $table->decimal('balance_due', 12, 2)->default(0);
+            $table->string('status', 20)->default('completed');
             $table->text('notes')->nullable();
-            $table->foreignId('requested_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->foreignId('handled_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->timestamp('handled_at')->nullable();
             $table->softDeletes();
             $table->timestamps();
 
             $table->index(['branch_id', 'status']);
-            $table->index(['branch_id', 'due_date']);
-            $table->index(['assigned_to']);
+            $table->index(['reservation_id']);
             $table->index(['room_id']);
+            $table->index(['guest_id']);
         });
     }
 

@@ -8,42 +8,27 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('staff');
+
         Schema::create('staff', function (Blueprint $table) {
             $table->id();
-            $table->string('task_number', 30)->unique();
+            $table->string('staff_number', 30)->unique();
             $table->foreignId('branch_id')
                 ->constrained('hotel_branches')
                 ->cascadeOnDelete();
-            $table->foreignId('room_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-            $table->foreignId('assigned_to')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->string('priority', 20)->default('normal');
-            $table->string('task_type', 40);
-            $table->date('due_date');
-            $table->string('status', 20)->default('pending');
-            $table->string('reason', 255)->nullable();
+            $table->string('first_name', 80);
+            $table->string('last_name', 80);
+            $table->string('position', 100);
+            $table->string('department', 80)->nullable();
+            $table->string('email')->nullable();
+            $table->string('phone', 30)->nullable();
+            $table->string('status', 20)->default('active');
             $table->text('notes')->nullable();
-            $table->foreignId('requested_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->foreignId('handled_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->timestamp('handled_at')->nullable();
             $table->softDeletes();
             $table->timestamps();
 
             $table->index(['branch_id', 'status']);
-            $table->index(['branch_id', 'due_date']);
-            $table->index(['assigned_to']);
-            $table->index(['room_id']);
+            $table->index(['branch_id', 'department']);
         });
     }
 

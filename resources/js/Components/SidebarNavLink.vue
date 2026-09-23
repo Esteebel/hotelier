@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { computed } from "vue";
+import { Link } from "@inertiajs/vue3";
 
 const props = defineProps({
     href: {
@@ -15,8 +15,8 @@ const props = defineProps({
 
 const classes = computed(() =>
     props.active
-        ? 'flex items-center gap-3 rounded-lg bg-indigo-600/10 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors'
-        : 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900',
+        ? "flex items-center gap-3 rounded-lg bg-indigo-600/10 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors"
+        : "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900",
 );
 </script>
 

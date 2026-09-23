@@ -10,26 +10,26 @@ class RoomTransferPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRoomTransfers->value);
     }
 
     public function view(User $user, RoomTransfer $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRoomTransfers->value);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRoomTransfers->value);
     }
 
     public function update(User $user, RoomTransfer $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRoomTransfers->value);
     }
 
     public function delete(User $user, RoomTransfer $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRoomTransfers->value);
     }
 }

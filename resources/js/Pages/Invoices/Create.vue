@@ -25,11 +25,20 @@ const form = useForm({
     subtotal: "",
     tax: "0",
     discount: "0",
+    total: "",
     notes: "",
     status: "draft",
 });
 
+const computedTotal = () => {
+    const sub = Number(form.subtotal) || 0;
+    const tax = Number(form.tax) || 0;
+    const disc = Number(form.discount) || 0;
+    return Math.max(0, sub + tax - disc).toFixed(2);
+};
+
 const submit = () => {
+    form.total = computedTotal();
     form.post(route("invoices.store"), { preserveScroll: true });
 };
 </script>
@@ -90,7 +99,7 @@ const submit = () => {
                                 :key="r.id"
                                 :value="r.id"
                             >
-                                {{ r.reservation_code }}
+                                {{ r.reservation_number }}
                             </option>
                         </SelectInput>
                     </div>
@@ -185,6 +194,15 @@ const submit = () => {
                             class="mt-1 block w-full"
                             placeholder="Invoice notes…"
                         />
+                    </div>
+
+                    <div
+                        class="sm:col-span-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700"
+                    >
+                        Computed total:
+                        <span class="font-semibold text-gray-900">
+                            {{ computedTotal() }}
+                        </span>
                     </div>
                 </div>
             </div>

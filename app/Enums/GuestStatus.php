@@ -9,6 +9,19 @@ enum GuestStatus: string
     case Blacklisted = 'blacklisted';
     case Archived = 'archived';
 
+    /**
+     * @return array<string, string>
+     */
+    public static function labels(): array
+    {
+        return [
+            self::Active->value => 'Active',
+            self::Former->value => 'Former',
+            self::Blacklisted->value => 'Blacklisted',
+            self::Archived->value => 'Archived',
+        ];
+    }
+
     public function badgeClass(): string
     {
         return match ($this) {

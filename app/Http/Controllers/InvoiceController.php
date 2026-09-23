@@ -20,7 +20,7 @@ class InvoiceController extends Controller
         $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
 
         $invoices = Invoice::query()
-            ->with(['reservation:id,reservation_code'])
+            ->with(['reservation:id,reservation_number'])
             ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
             ->when(
                 $request->filled('status'),
@@ -31,7 +31,7 @@ class InvoiceController extends Controller
                 fn ($query) => $query->where(
                     fn ($q) => $q
                         ->where('invoice_number', 'like', '%'.$request->string('search').'%')
-                        ->orWhereHas('reservation', fn ($x) => $x->where('reservation_code', 'like', '%'.$request->string('search').'%')),
+                        ->orWhereHas('reservation', fn ($x) => $x->where('reservation_number', 'like', '%'.$request->string('search').'%')),
                 ),
             )
             ->latest()
@@ -42,11 +42,11 @@ class InvoiceController extends Controller
                     'id' => $invoice->id,
                     'number' => $invoice->invoice_number,
                     'guest' => $invoice->guest?->full_name,
-                    'reservation' => $invoice->reservation?->reservation_code,
+                    'reservation' => $invoice->reservation?->reservation_number,
                     'issued_on' => $invoice->issued_on->toDateString(),
                     'due_on' => $invoice->due_on?->toDateString(),
                     'total' => $invoice->total,
-                    'paid' => $invoice->paid_amount,
+                    'paid' => $invoice->amount_paid,
                     'balance' => $invoice->balance_due,
                     'status' => $invoice->status->value,
                     'status_label' => $invoice->status->label(),
@@ -66,6 +66,7 @@ class InvoiceController extends Controller
         $this->authorize('create', Invoice::class);
 
         return Inertia::render('Invoices/Create', [
+            'guests' => $this->guestOptions(),
             'reservations' => $this->reservationOptions(),
             'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
@@ -75,7 +76,11 @@ class InvoiceController extends Controller
     {
         $this->authorize('create', Invoice::class);
 
-        Invoice::create($request->validated());
+        $data = $request->validated();
+        $data['created_by'] = $request->user()?->id;
+        $data['amount_paid'] = $data['amount_paid'] ?? 0;
+
+        Invoice::create($data);
 
         return redirect()
             ->route('invoices.index')
@@ -103,6 +108,7 @@ class InvoiceController extends Controller
                 'status' => $invoice->status->value,
             ],
             'reservations' => $this->reservationOptions(),
+            'guests' => $this->guestOptions(),
             'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
@@ -130,15 +136,28 @@ class InvoiceController extends Controller
     }
 
     /**
-     * @return array<int, array{id: int, reservation_code: string}>
+     * @return array<int, array{id: int, reservation_number: string}>
      */
     private function reservationOptions(): array
     {
         return Reservation::query()
             ->whereIn('status', ['confirmed', 'checked_in'])
             ->orderByDesc('check_in')
-            ->get(['id', 'reservation_code'])
-            ->map(fn (Reservation $res) => $res->only(['id', 'reservation_code']))
+            ->get(['id', 'reservation_number'])
+            ->map(fn (Reservation $res) => $res->only(['id', 'reservation_number']))
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{id: int, full_name: string}>
+     */
+    private function guestOptions(): array
+    {
+        return \App\Models\Guest::query()
+            ->where('status', 'active')
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name'])
+            ->map(fn (\App\Models\Guest $guest) => $guest->only(['id', 'full_name']))
             ->all();
     }
 }

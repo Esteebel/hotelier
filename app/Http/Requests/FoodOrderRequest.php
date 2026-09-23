@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\PermissionName;
+use App\Models\FoodOrder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
@@ -18,38 +19,31 @@ class FoodOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'task_number' => ['required', 'string', 'max:30'],
-            'branch_id' => ['required', 'integer', 'exists:hotel_branches,id'],
-            'room_id' => ['required', 'integer', 'exists:rooms,id'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-            'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'task_type' => ['required', Rule::in(['cleaning', 'order', 'restock', 'inspection'])],
-            'due_date' => ['required', 'date'],
-            'status' => ['required', Rule::in(['pending', 'in-progress', 'on-hold', 'completed', 'cancelled'])],
+            'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
+            'guest_id' => ['nullable', 'integer', 'exists:guests,id'],
+            'order_type' => ['required', Rule::in(['dine_in', 'takeout', 'delivery'])],
+            'items' => ['nullable', 'array'],
+            'total_amount' => ['required', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
     public function prepareForValidation(): void
     {
-        if (! $this->has('task_number')) {
+        if (! $this->has('order_number')) {
+            $this->merge(['order_number' => FoodOrder::nextOrderNumber()]);
+        }
+
+        if (is_string($this->input('items'))) {
+            $decoded = json_decode($this->input('items'), true);
             $this->merge([
-                'task_number' => FoodOrder::nextTaskNumber(),
+                'items' => is_array($decoded) ? $decoded : [],
             ]);
         }
     }
 
-    public function messages(): array
-    {
-        return [
-            'room_id.exists' => 'The selected room is not on file.',
-        ];
-    }
-
     public function failedValidation(\Illuminate\Contracts\Validation\Validator $validator): void
     {
-        throw new HttpResponseException(
-            back()->withErrors($validator->errors())->withInput(),
-        );
+        throw new HttpResponseException(back()->withErrors($validator->errors())->withInput());
     }
 }

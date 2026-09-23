@@ -11,6 +11,21 @@ enum InvoiceStatus: string
     case Overdue = 'overdue';
     case Void = 'void';
 
+    /**
+     * @return array<string, string>
+     */
+    public static function labels(): array
+    {
+        return [
+            self::Draft->value => 'Draft',
+            self::Sent->value => 'Sent',
+            self::PartiallyPaid->value => 'Partially Paid',
+            self::Paid->value => 'Paid',
+            self::Overdue->value => 'Overdue',
+            self::Void->value => 'Void',
+        ];
+    }
+
     public function badgeClass(): string
     {
         return match ($this) {

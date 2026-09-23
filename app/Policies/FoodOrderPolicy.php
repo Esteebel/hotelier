@@ -10,26 +10,26 @@ class FoodOrderPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRestaurantOrders->value);
     }
 
     public function view(User $user, FoodOrder $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRestaurantOrders->value);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRestaurantOrders->value);
     }
 
     public function update(User $user, FoodOrder $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRestaurantOrders->value);
     }
 
     public function delete(User $user, FoodOrder $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageRestaurantOrders->value);
     }
 }

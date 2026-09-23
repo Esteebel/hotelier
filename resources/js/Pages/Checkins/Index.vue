@@ -5,28 +5,27 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Link, router } from "@inertiajs/vue3";
 
 const props = defineProps({
-    tasks: Object,
+    checkins: Object,
     filters: Object,
+    activeBranch: Object,
 });
 
 const search = ref(props.filters?.search ?? "");
 const statusFilter = ref(props.filters?.status ?? "");
 
 const statusStyles = {
-    pending: "bg-amber-100 text-amber-800",
-    completed: "bg-emerald-100 text-emerald-800",
+    checked_in: "bg-emerald-100 text-emerald-800",
     cancelled: "bg-rose-100 text-rose-700",
 };
 
 const statusLabels = {
-    pending: "Pending",
-    completed: "Completed",
+    checked_in: "Checked In",
     cancelled: "Cancelled",
 };
 
 function applyFilters() {
     router.get(
-        route("room-tasks.index"),
+        route("checkins.index"),
         {
             search: search.value,
             status: statusFilter.value,
@@ -40,7 +39,7 @@ function applyFilters() {
     <AuthenticatedLayout>
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Room Transfers
+                Check-ins
             </h2>
         </template>
 
@@ -52,7 +51,7 @@ function applyFilters() {
                             <input
                                 v-model="search"
                                 type="search"
-                                placeholder="Search tasks…"
+                                placeholder="Search check-ins..."
                                 @keydown.enter="applyFilters"
                                 class="w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             />
@@ -63,25 +62,22 @@ function applyFilters() {
                             class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                         >
                             <option value="">All statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="completed">Completed</option>
+                            <option value="checked_in">Checked In</option>
                             <option value="cancelled">Cancelled</option>
                         </select>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <Link
-                            href="/room-tasks/create"
-                            class="bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold"
-                        >
-                            <AppIcon name="plus" class="mr-2 h-4 w-4" />
-                            New Transfer
-                        </Link>
-                    </div>
+                    <Link
+                        :href="route('checkins.create')"
+                        class="bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold"
+                    >
+                        <AppIcon name="plus" class="mr-2 h-4 w-4" />
+                        New Check-in
+                    </Link>
                 </div>
 
                 <div class="mt-6 bg-white rounded-lg shadow-sm">
                     <div
-                        v-if="tasks.data && tasks.data.length"
+                        v-if="checkins.data && checkins.data.length"
                         class="overflow-x-auto"
                     >
                         <table class="min-w-full divide-y divide-gray-200">
@@ -90,17 +86,22 @@ function applyFilters() {
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
                                     >
-                                        Transfer
+                                        Check-in #
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                                    >
+                                        Guest
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                                    >
+                                        Room
                                     </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
                                     >
                                         Reservation
-                                    </th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-                                    >
-                                        From → To
                                     </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
@@ -121,52 +122,52 @@ function applyFilters() {
                             </thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
                                 <tr
-                                    v-for="transfer in tasks.data"
-                                    :key="transfer.id"
+                                    v-for="checkin in checkins.data"
+                                    :key="checkin.id"
                                 >
                                     <td
-                                        class="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900"
+                                        class="whitespace-nowrap px-6 py-4 text-sm font-medium text-indigo-600"
                                     >
-                                        {{ transfer.task_number }}
+                                        {{ checkin.checkin_number }}
                                     </td>
                                     <td
                                         class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
                                     >
                                         {{
-                                            transfer.reservation
-                                                ?.reservation_number
+                                            checkin.guest
+                                                ? `${checkin.guest.first_name} ${checkin.guest.last_name}`
+                                                : "-"
                                         }}
                                     </td>
                                     <td
                                         class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
                                     >
-                                        <span class="text-gray-900">{{
-                                            transfer.from_room
-                                        }}</span>
-                                        <AppIcon
-                                            name="arrow-right"
-                                            class="mx-1 inline h-3 w-3"
-                                        />
-                                        <span class="text-gray-900">{{
-                                            transfer.to_room
-                                        }}</span>
+                                        {{ checkin.room?.room_number ?? "-" }}
                                     </td>
                                     <td
                                         class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
                                     >
-                                        {{ transfer.due_date }}
+                                        {{
+                                            checkin.reservation
+                                                ?.reservation_number ?? "-"
+                                        }}
+                                    </td>
+                                    <td
+                                        class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
+                                    >
+                                        {{ checkin.checked_in_at }}
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4">
                                         <span
                                             class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold"
                                             :class="
-                                                statusStyles[transfer.status] ??
-                                                statusStyles.pending
+                                                statusStyles[checkin.status] ??
+                                                statusStyles.checked_in
                                             "
                                         >
                                             {{
-                                                statusLabels[transfer.status] ??
-                                                transfer.status
+                                                statusLabels[checkin.status] ??
+                                                checkin.status
                                             }}
                                         </span>
                                     </td>
@@ -174,26 +175,31 @@ function applyFilters() {
                                         class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium"
                                     >
                                         <Link
-                                            :href="`/room-tasks/${transfer.id}/edit`"
+                                            :href="
+                                                route(
+                                                    'checkins.show',
+                                                    checkin.id,
+                                                )
+                                            "
                                             class="text-indigo-600 hover:text-indigo-900"
-                                            >Edit</Link
                                         >
+                                            View
+                                        </Link>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-
                     <div
                         v-else
                         class="px-6 py-12 text-center text-sm text-gray-500"
                     >
-                        No room tasks found.
+                        No check-ins found.
                     </div>
                 </div>
 
-                <nav class="flex items-center gap-1">
-                    <template v-for="link in tasks.links" :key="link.label">
+                <nav class="mt-4 flex items-center gap-1">
+                    <template v-for="link in checkins.links" :key="link.label">
                         <Link
                             v-if="link.url"
                             :href="link.url"

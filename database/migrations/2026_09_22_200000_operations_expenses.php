@@ -8,42 +8,31 @@ return new class extends Migration
 {
     public function up(): void
     {
+        Schema::dropIfExists('expenses');
+
         Schema::create('expenses', function (Blueprint $table) {
             $table->id();
-            $table->string('task_number', 30)->unique();
+            $table->string('expense_number', 30)->unique();
             $table->foreignId('branch_id')
                 ->constrained('hotel_branches')
                 ->cascadeOnDelete();
-            $table->foreignId('room_id')
-                ->nullable()
-                ->constrained()
-                ->nullOnDelete();
-            $table->foreignId('assigned_to')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->string('priority', 20)->default('normal');
-            $table->string('task_type', 40);
-            $table->date('due_date');
-            $table->string('status', 20)->default('pending');
-            $table->string('reason', 255)->nullable();
+            $table->string('description', 255);
+            $table->decimal('amount', 12, 2);
+            $table->string('category', 80);
+            $table->date('expense_date');
+            $table->string('reference', 60)->nullable();
+            $table->string('status', 20)->default('completed');
             $table->text('notes')->nullable();
-            $table->foreignId('requested_by')
+            $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
-            $table->foreignId('handled_by')
-                ->nullable()
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->timestamp('handled_at')->nullable();
             $table->softDeletes();
             $table->timestamps();
 
             $table->index(['branch_id', 'status']);
-            $table->index(['branch_id', 'due_date']);
-            $table->index(['assigned_to']);
-            $table->index(['room_id']);
+            $table->index(['branch_id', 'expense_date']);
+            $table->index(['category']);
         });
     }
 

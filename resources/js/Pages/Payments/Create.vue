@@ -21,11 +21,10 @@ const form = useForm({
     reservation_id: "",
     method: "cash",
     amount: "",
-    currency: "NGN",
     paid_on: "",
     reference: "",
     notes: "",
-    status: "pending",
+    status: "completed",
 });
 
 const submit = () => {
@@ -88,7 +87,7 @@ const submit = () => {
                                 :key="r.id"
                                 :value="r.id"
                             >
-                                {{ r.reservation_code }}
+                                {{ r.reservation_number }}
                             </option>
                         </SelectInput>
                     </div>
@@ -104,7 +103,9 @@ const submit = () => {
                             <option value="bank_transfer">Bank Transfer</option>
                             <option value="mobile_money">Mobile Money</option>
                             <option value="cheque">Cheque</option>
-                            <option value="credit">Credit Account</option>
+                            <option value="credit_account">
+                                Credit Account
+                            </option>
                         </SelectInput>
                         <InputError
                             class="mt-2"

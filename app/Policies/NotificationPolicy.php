@@ -10,26 +10,26 @@ class NotificationPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ViewNotifications->value);
     }
 
     public function view(User $user, Notification $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ViewTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ViewNotifications->value);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageNotifications->value);
     }
 
     public function update(User $user, Notification $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageNotifications->value);
     }
 
     public function delete(User $user, Notification $transfer): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageTransfers->value);
+        return $user->hasPermissionTo(PermissionName::ManageNotifications->value);
     }
 }

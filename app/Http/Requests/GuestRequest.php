@@ -38,4 +38,19 @@ class GuestRequest extends FormRequest
             'status' => ['required', Rule::in(['active', 'former', 'blacklisted', 'archived'])],
         ];
     }
+
+    public function prepareForValidation(): void
+    {
+        if (! $this->has('branch_id')) {
+            $this->merge([
+                'branch_id' => ContextualBranch::id(),
+            ]);
+        }
+
+        if (! $this->has('status')) {
+            $this->merge([
+                'status' => 'active',
+            ]);
+        }
+    }
 }

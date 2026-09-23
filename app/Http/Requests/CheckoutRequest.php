@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\PermissionName;
+use App\Models\Checkout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
@@ -17,24 +18,27 @@ class CheckoutRequest extends FormRequest
 
     public function rules(): array
     {
+        $checkout = $this->route('checkout');
+
         return [
-            'task_number' => ['required', 'string', 'max:30'],
-            'branch_id' => ['required', 'integer', 'exists:hotel_branches,id'],
+            'reservation_id' => ['required', 'integer', 'exists:reservations,id'],
             'room_id' => ['required', 'integer', 'exists:rooms,id'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-            'priority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'task_type' => ['required', Rule::in(['cleaning', 'order', 'restock', 'inspection'])],
-            'due_date' => ['required', 'date'],
-            'status' => ['required', Rule::in(['pending', 'in-progress', 'on-hold', 'completed', 'cancelled'])],
+            'guest_id' => ['required', 'integer', 'exists:guests,id'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'checkout_number' => [
+                'nullable',
+                'string',
+                'max:30',
+                Rule::unique('checkouts', 'checkout_number')->ignore($checkout?->id),
+            ],
         ];
     }
 
     public function prepareForValidation(): void
     {
-        if (! $this->has('task_number')) {
+        if (! $this->has('checkout_number')) {
             $this->merge([
-                'task_number' => Checkout::nextTaskNumber(),
+                'checkout_number' => Checkout::nextCheckoutNumber(),
             ]);
         }
     }
@@ -42,7 +46,9 @@ class CheckoutRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'reservation_id.exists' => 'The selected reservation is not on file.',
             'room_id.exists' => 'The selected room is not on file.',
+            'guest_id.exists' => 'The selected guest is not on file.',
         ];
     }
 

@@ -28,6 +28,14 @@ const apply = () => {
     );
 };
 
+const exportReport = (type) => {
+    const params = new URLSearchParams();
+    if (from.value) params.set("from", from.value);
+    if (to.value) params.set("to", to.value);
+    params.set("type", type);
+    window.location.href = route("reports.export") + "?" + params.toString();
+};
+
 const metricCards = [
     {
         key: "occupancy",
@@ -139,6 +147,29 @@ const metricCards = [
                         >Reset</SecondaryButton
                     >
                 </div>
+            </div>
+            <div class="mt-4 flex gap-2 border-t border-gray-100 pt-4">
+                <span class="text-sm font-medium text-gray-500">Export:</span>
+                <button
+                    @click="exportReport('reservations')"
+                    class="text-sm text-indigo-600 hover:text-indigo-800"
+                >
+                    Reservations CSV
+                </button>
+                <span class="text-gray-300">|</span>
+                <button
+                    @click="exportReport('payments')"
+                    class="text-sm text-indigo-600 hover:text-indigo-800"
+                >
+                    Payments CSV
+                </button>
+                <span class="text-gray-300">|</span>
+                <button
+                    @click="exportReport('guests')"
+                    class="text-sm text-indigo-600 hover:text-indigo-800"
+                >
+                    Guests CSV
+                </button>
             </div>
         </div>
 

@@ -12,6 +12,7 @@ const props = defineProps({
 });
 
 const variant = ref("classic");
+const brandName = "Heritage Hotels";
 </script>
 
 <template>

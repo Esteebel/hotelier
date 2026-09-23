@@ -35,7 +35,7 @@ class ReservationController extends Controller
                         ->where('first_name', 'like', '%'.$request->string('search').'%')
                         ->orWhere('last_name', 'like', '%'.$request->string('search').'%')
                         ->orWhere('email', 'like', '%'.$request->string('search').'%'))
-                    ->orWhere('reservation_code', 'like', '%'.$request->string('search').'%'),
+                    ->orWhere('reservation_number', 'like', '%'.$request->string('search').'%'),
                 ),
             )
             ->latest()
@@ -44,7 +44,7 @@ class ReservationController extends Controller
             ->through(
                 fn (Reservation $reservation) => [
                     'id' => $reservation->id,
-                    'code' => $reservation->reservation_code,
+                    'code' => $reservation->reservation_number,
                     'guest' => $reservation->guest?->full_name,
                     'room' => $reservation->room?->room_number,
                     'check_in' => $reservation->check_in->toDateString(),
@@ -79,7 +79,12 @@ class ReservationController extends Controller
     {
         $this->authorize('create', Reservation::class);
 
-        Reservation::create($request->validated());
+        $data = $request->validated();
+        $data['created_by'] = $request->user()?->id;
+        $data['special_requests'] = $data['special_requests'] ?? ($data['notes'] ?? null);
+        unset($data['notes']);
+
+        Reservation::create($data);
 
         return redirect()
             ->route('reservations.index')
@@ -96,14 +101,16 @@ class ReservationController extends Controller
                 'branch_id' => $reservation->branch_id,
                 'guest_id' => $reservation->guest_id,
                 'room_id' => $reservation->room_id,
-                'reservation_code' => $reservation->reservation_code,
+                'reservation_number' => $reservation->reservation_number,
                 'check_in' => $reservation->check_in->toDateString(),
                 'check_out' => $reservation->check_out->toDateString(),
                 'adults' => $reservation->adults,
                 'children' => $reservation->children,
                 'rate_plan' => $reservation->rate_plan,
                 'total_amount' => $reservation->total_amount,
-                'notes' => $reservation->notes,
+                'balance_due' => $reservation->balance_due,
+                'notes' => $reservation->special_requests,
+                'special_requests' => $reservation->special_requests,
                 'status' => $reservation->status->value,
             ],
             'guests' => $this->guestOptions(),

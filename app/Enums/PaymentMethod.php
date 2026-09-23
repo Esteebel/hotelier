@@ -11,6 +11,21 @@ enum PaymentMethod: string
     case Cheque = 'cheque';
     case CreditAccount = 'credit_account';
 
+    /**
+     * @return array<string, string>
+     */
+    public static function labels(): array
+    {
+        return [
+            self::Cash->value => 'Cash',
+            self::Card->value => 'Card',
+            self::BankTransfer->value => 'Bank Transfer',
+            self::MobileMoney->value => 'Mobile Money',
+            self::Cheque->value => 'Cheque',
+            self::CreditAccount->value => 'Credit Account',
+        ];
+    }
+
     public function badgeClass(): string
     {
         return match ($this) {

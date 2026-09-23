@@ -15,23 +15,21 @@ class Expense extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'task_number',
+        'expense_number',
         'branch_id',
-        'room_id',
-        'assigned_to',
-        'priority',
-        'task_type',
-        'due_date',
+        'description',
+        'amount',
+        'category',
+        'expense_date',
+        'reference',
         'status',
         'notes',
-        'requested_by',
-        'handled_by',
-        'handled_at',
+        'created_by',
     ];
 
     protected $casts = [
-        'due_date' => 'date',
-        'handled_at' => 'datetime',
+        'amount' => 'decimal:2',
+        'expense_date' => 'date',
     ];
 
     public function branch(): BelongsTo
@@ -39,24 +37,9 @@ class Expense extends Model
         return $this->belongsTo(HotelBranch::class, 'branch_id');
     }
 
-    public function room(): BelongsTo
+    public function creator(): BelongsTo
     {
-        return $this->belongsTo(Room::class);
-    }
-
-    public function assignee(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'assigned_to');
-    }
-
-    public function requester(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'requested_by');
-    }
-
-    public function handler(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'handled_by');
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function scopeForBranch(Builder $query, ?int $branchId): Builder
@@ -64,11 +47,11 @@ class Expense extends Model
         return $query->when($branchId, fn (Builder $q) => $q->where('branch_id', $branchId));
     }
 
-    public static function nextTaskNumber(): string
+    public static function nextExpenseNumber(): string
     {
         $branchCode = ContextualBranch::current()?->code ?? 'HQ';
         $count = static::withTrashed()->count() + 1;
 
-        return $branchCode.'-HK-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
+        return $branchCode.'-EXP-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
     }
 }

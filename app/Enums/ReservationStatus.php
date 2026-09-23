@@ -11,6 +11,21 @@ enum ReservationStatus: string
     case Cancelled = 'cancelled';
     case NoShow = 'no_show';
 
+    /**
+     * @return array<string, string>
+     */
+    public static function labels(): array
+    {
+        return [
+            self::Confirmed->value => 'Confirmed',
+            self::CheckedIn->value => 'Checked In',
+            self::Extended->value => 'Extended',
+            self::CheckedOut->value => 'Checked Out',
+            self::Cancelled->value => 'Cancelled',
+            self::NoShow->value => 'No Show',
+        ];
+    }
+
     public function badgeClass(): string
     {
         return match ($this) {

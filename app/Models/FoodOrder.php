@@ -15,23 +15,21 @@ class FoodOrder extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'task_number',
+        'order_number',
         'branch_id',
         'room_id',
-        'assigned_to',
-        'priority',
-        'task_type',
-        'due_date',
+        'guest_id',
+        'order_type',
+        'items',
+        'total_amount',
         'status',
         'notes',
-        'requested_by',
-        'handled_by',
-        'handled_at',
+        'created_by',
     ];
 
     protected $casts = [
-        'due_date' => 'date',
-        'handled_at' => 'datetime',
+        'items' => 'array',
+        'total_amount' => 'decimal:2',
     ];
 
     public function branch(): BelongsTo
@@ -44,19 +42,9 @@ class FoodOrder extends Model
         return $this->belongsTo(Room::class);
     }
 
-    public function assignee(): BelongsTo
+    public function guest(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_to');
-    }
-
-    public function requester(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'requested_by');
-    }
-
-    public function handler(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'handled_by');
+        return $this->belongsTo(Guest::class);
     }
 
     public function scopeForBranch(Builder $query, ?int $branchId): Builder
@@ -64,11 +52,11 @@ class FoodOrder extends Model
         return $query->when($branchId, fn (Builder $q) => $q->where('branch_id', $branchId));
     }
 
-    public static function nextTaskNumber(): string
+    public static function nextOrderNumber(): string
     {
         $branchCode = ContextualBranch::current()?->code ?? 'HQ';
         $count = static::withTrashed()->count() + 1;
 
-        return $branchCode.'-HK-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
+        return $branchCode.'-FOD-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
     }
 }

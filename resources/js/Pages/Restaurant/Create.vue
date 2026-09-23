@@ -8,34 +8,30 @@ import TextAreaInput from "@/Components/TextAreaInput.vue";
 import TextInput from "@/Components/TextInput.vue";
 
 const props = defineProps({
-    reservations: Array,
     rooms: Array,
+    guests: Array,
     activeBranch: Object,
 });
-
 const form = useForm({
-    reservation_id: "",
     room_id: "",
-    assigned_to: "",
-    due_date: "",
-    reason: "",
+    guest_id: "",
+    order_type: "dine_in",
+    items: "",
+    total_amount: "",
     notes: "",
-    status: "pending",
 });
-
 function store() {
-    form.post(route("room-tasks.store"));
+    form.post(route("restaurant.store"));
 }
 </script>
 
 <template>
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                New Room Transfer
-            </h2>
-        </template>
-
+        <template #header
+            ><h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                New Restaurant Order
+            </h2></template
+        >
         <div class="py-12">
             <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
                 <form
@@ -43,40 +39,14 @@ function store() {
                     class="rounded-lg bg-white p-8 shadow-sm"
                 >
                     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <div class="sm:col-span-2">
-                            <InputLabel
-                                for="reservation_id"
-                                value="Reservation"
-                            />
-                            <select
-                                id="reservation_id"
-                                v-model="form.reservation_id"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                            >
-                                <option value="">Select reservation…</option>
-                                <option
-                                    v-for="reservation in reservations"
-                                    :key="reservation.id"
-                                    :value="reservation.id"
-                                >
-                                    {{ reservation.reservation_number }}
-                                    ({{ reservation.room?.room_number }})
-                                </option>
-                            </select>
-                            <InputError
-                                class="mt-2"
-                                :message="form.errors.reservation_id"
-                            />
-                        </div>
-
                         <div>
-                            <InputLabel for="room_id" value="From Room" />
+                            <InputLabel for="room_id" value="Room" />
                             <select
                                 id="room_id"
                                 v-model="form.room_id"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             >
-                                <option value="">Select room…</option>
+                                <option value="">Select room...</option>
                                 <option
                                     v-for="room in rooms"
                                     :key="room.id"
@@ -90,80 +60,82 @@ function store() {
                                 :message="form.errors.room_id"
                             />
                         </div>
-
                         <div>
-                            <InputLabel for="assigned_to" value="To Room" />
+                            <InputLabel for="guest_id" value="Guest" />
                             <select
-                                id="assigned_to"
-                                v-model="form.assigned_to"
+                                id="guest_id"
+                                v-model="form.guest_id"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             >
-                                <option value="">Select room…</option>
+                                <option value="">Select guest...</option>
                                 <option
-                                    v-for="room in rooms"
-                                    :key="room.id"
-                                    :value="room.id"
+                                    v-for="guest in guests"
+                                    :key="guest.id"
+                                    :value="guest.id"
                                 >
-                                    {{ room.room_number }}
+                                    {{ guest.first_name }} {{ guest.last_name }}
                                 </option>
                             </select>
                             <InputError
                                 class="mt-2"
-                                :message="form.errors.assigned_to"
+                                :message="form.errors.guest_id"
                             />
                         </div>
-
                         <div>
-                            <InputLabel for="due_date" value="Transfer Date" />
-                            <TextInput
-                                id="due_date"
-                                v-model="form.due_date"
-                                type="date"
-                                class="mt-1 block w-full"
-                            />
-                            <InputError
-                                class="mt-2"
-                                :message="form.errors.due_date"
-                            />
-                        </div>
-
-                        <div>
-                            <InputLabel for="status" value="Status" />
+                            <InputLabel for="order_type" value="Order Type" />
                             <select
-                                id="status"
-                                v-model="form.status"
+                                id="order_type"
+                                v-model="form.order_type"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             >
-                                <option value="pending">Pending</option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
+                                <option value="dine_in">Dine In</option>
+                                <option value="takeout">Takeout</option>
+                                <option value="delivery">Delivery</option>
                             </select>
                             <InputError
                                 class="mt-2"
-                                :message="form.errors.status"
+                                :message="form.errors.order_type"
                             />
                         </div>
-
-                        <div class="sm:col-span-2">
-                            <InputLabel for="reason" value="Reason" />
+                        <div>
+                            <InputLabel
+                                for="total_amount"
+                                value="Total Amount"
+                            />
                             <TextInput
-                                id="reason"
-                                v-model="form.reason"
-                                type="text"
+                                id="total_amount"
+                                v-model="form.total_amount"
+                                type="number"
+                                step="0.01"
                                 class="mt-1 block w-full"
+                                placeholder="0.00"
                             />
                             <InputError
                                 class="mt-2"
-                                :message="form.errors.reason"
+                                :message="form.errors.total_amount"
                             />
                         </div>
-
+                        <div class="sm:col-span-2">
+                            <InputLabel for="items" value="Items (JSON)" />
+                            <TextAreaInput
+                                id="items"
+                                v-model="form.items"
+                                class="mt-1 block w-full"
+                                rows="4"
+                                placeholder='[{"name": "Item", "quantity": 1, "price": 10.00}]'
+                            />
+                            <InputError
+                                class="mt-2"
+                                :message="form.errors.items"
+                            />
+                        </div>
                         <div class="sm:col-span-2">
                             <InputLabel for="notes" value="Notes" />
-                            <TextAreaInputInput
+                            <TextAreaInput
                                 id="notes"
                                 v-model="form.notes"
                                 class="mt-1 block w-full"
+                                rows="3"
                             />
                             <InputError
                                 class="mt-2"
@@ -171,11 +143,10 @@ function store() {
                             />
                         </div>
                     </div>
-
                     <div class="mt-6 flex items-center justify-end gap-4">
-                        <PrimaryButton :disabled="form.processing">
-                            Save Transfer
-                        </PrimaryButton>
+                        <PrimaryButton :disabled="form.processing"
+                            >Create Order</PrimaryButton
+                        >
                     </div>
                 </form>
             </div>
