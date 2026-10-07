@@ -27,6 +27,8 @@ class HotelOrganizationTest extends TestCase
             PermissionName::ViewHotels->value,
             PermissionName::ManageHotels->value,
         ]);
+        // Creating and deleting organizations requires the super-admin role.
+        $this->user->assignRole('super-admin');
     }
 
     public function test_organization_index_requires_authentication(): void

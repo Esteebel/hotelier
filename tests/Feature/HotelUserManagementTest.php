@@ -7,6 +7,7 @@ use App\Models\HotelBranch;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -105,6 +106,75 @@ class HotelUserManagementTest extends TestCase
         $this->assertTrue($created->branches()->whereKey($branch->id)->exists());
     }
 
+    public function test_user_created_without_password_can_sign_in_with_default_password(): void
+    {
+        $this->actingAs($this->user)
+            ->post(route('users.store'), [
+                'name' => 'Front Desk',
+                'email' => 'frontdesk@example.com',
+                'status' => 'active',
+                'roles' => ['staff'],
+            ])
+            ->assertRedirect(route('users.index'))
+            ->assertSessionHas('success');
+
+        $this->assertStringContainsString(
+            (string) config('app.default_user_password'),
+            (string) session('success'),
+        );
+
+        $this->assertTrue(
+            Auth::attempt([
+                'email' => 'frontdesk@example.com',
+                'password' => (string) config('app.default_user_password'),
+            ]),
+        );
+        Auth::logout();
+    }
+
+    public function test_custom_password_takes_precedence_over_default(): void
+    {
+        $this->actingAs($this->user)
+            ->post(route('users.store'), [
+                'name' => 'Custom Password User',
+                'email' => 'custompw@example.com',
+                'password' => 'MySecret123!',
+                'password_confirmation' => 'MySecret123!',
+                'status' => 'active',
+                'roles' => ['staff'],
+            ])
+            ->assertRedirect(route('users.index'));
+
+        $this->assertStringNotContainsString(
+            'default password',
+            (string) session('success'),
+        );
+
+        $this->assertFalse(
+            Auth::attempt([
+                'email' => 'custompw@example.com',
+                'password' => (string) config('app.default_user_password'),
+            ]),
+        );
+
+        $this->assertTrue(
+            Auth::attempt(['email' => 'custompw@example.com', 'password' => 'MySecret123!']),
+        );
+        Auth::logout();
+    }
+
+    public function test_user_create_page_exposes_default_password(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('users.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Users/Create')
+                    ->where('defaultPassword', config('app.default_user_password')),
+            );
+    }
+
     public function test_email_is_validated_as_unique_on_create(): void
     {
         $this->actingAs($this->user)
@@ -188,6 +258,17 @@ class HotelUserManagementTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('users', ['id' => $target->id]);
+    }
+
+    public function test_authorized_user_can_delete_a_regular_user(): void
+    {
+        $target = User::factory()->create();
+
+        $this->actingAs($this->user)
+            ->delete(route('users.destroy', $target))
+            ->assertRedirect(route('users.index'));
+
+        $this->assertDatabaseMissing('users', ['id' => $target->id]);
     }
 
     public function test_user_cannot_delete_themselves(): void

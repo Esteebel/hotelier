@@ -11,6 +11,8 @@ use App\Http\Controllers\HousekeepingTaskController;
 use App\Http\Controllers\MaintenanceTaskController;
 use App\Http\Controllers\ServiceRequestController;
 use App\Http\Controllers\FoodOrderController;
+use App\Http\Controllers\MenuItemController;
+use App\Http\Controllers\PortalController;
 use App\Http\Controllers\LaundryOrderController;
 use App\Http\Controllers\CheckinController;
 use App\Http\Controllers\CheckoutController;
@@ -40,16 +42,17 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', \App\Http\Controllers\DashboardController::class)
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'staff.area'])
     ->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'staff.area'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Branch switching
     Route::post('/active-branch', [HotelBranchController::class, 'switch'])->name('branches.switch');
+    Route::post('/active-organization', [HotelOrganizationController::class, 'switch'])->name('organizations.switch');
 
     // Hotel Organizations
     Route::prefix('organizations')->name('organizations.')->group(function () {
@@ -202,6 +205,16 @@ Route::middleware('auth')->group(function () {
         Route::post('/{serviceRequest}/complete', [ServiceRequestController::class, 'complete'])->name('complete');
     });
 
+    // Restaurant Menu
+    Route::prefix('restaurant/menu')->name('menu.')->group(function () {
+        Route::get('/', [MenuItemController::class, 'index'])->name('index');
+        Route::get('/create', [MenuItemController::class, 'create'])->name('create');
+        Route::post('/', [MenuItemController::class, 'store'])->name('store');
+        Route::get('/{menuItem}/edit', [MenuItemController::class, 'edit'])->name('edit');
+        Route::put('/{menuItem}', [MenuItemController::class, 'update'])->name('update');
+        Route::delete('/{menuItem}', [MenuItemController::class, 'destroy'])->name('destroy');
+    });
+
     // Restaurant
     Route::prefix('restaurant')->name('restaurant.')->group(function () {
         Route::get('/', [FoodOrderController::class, 'index'])->name('index');
@@ -289,6 +302,21 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/export', [ReportController::class, 'export'])->name('export');
     });
+});
+
+// Customer portal
+Route::middleware(['auth', 'customer.area'])->prefix('portal')->name('portal.')->group(function () {
+    Route::get('/', [PortalController::class, 'home'])->name('home');
+    Route::get('/menu', [PortalController::class, 'menu'])->name('menu');
+    Route::post('/menu/orders', [PortalController::class, 'storeOrder'])->name('menu.orders.store');
+    Route::get('/orders', [PortalController::class, 'orders'])->name('orders');
+    Route::get('/rooms', [PortalController::class, 'rooms'])->name('rooms');
+    Route::get('/reservations', [PortalController::class, 'reservations'])->name('reservations');
+    Route::post('/reservations', [PortalController::class, 'storeReservation'])->name('reservations.store');
+    Route::get('/bills', [PortalController::class, 'bills'])->name('bills');
+    Route::get('/profile', [PortalController::class, 'profile'])->name('profile');
+    Route::post('/notifications/{notification}/read', [PortalController::class, 'readNotification'])->name('notifications.read');
+    Route::post('/notifications/read-all', [PortalController::class, 'readAllNotifications'])->name('notifications.readAll');
 });
 
 require __DIR__.'/auth.php';

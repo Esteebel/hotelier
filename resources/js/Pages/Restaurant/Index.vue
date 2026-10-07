@@ -3,6 +3,7 @@ import { ref } from "vue";
 import AppIcon from "@/Components/AppIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Link, router } from "@inertiajs/vue3";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     orders: Object,
@@ -12,6 +13,7 @@ const props = defineProps({
 
 const search = ref(props.filters?.search ?? "");
 const statusFilter = ref(props.filters?.status ?? "");
+const { hasPermission } = usePermissions();
 
 const statusStyles = {
     pending: "bg-amber-100 text-amber-800",
@@ -62,6 +64,13 @@ function applyFilters() {
                         </select>
                     </div>
                     <Link
+                        :href="route('menu.index')"
+                        class="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold"
+                    >
+                        <AppIcon name="inbox" class="mr-2 h-4 w-4" />Menu
+                    </Link>
+                    <Link
+                        v-if="hasPermission('manage-restaurant-orders')"
                         :href="route('restaurant.create')"
                         class="bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold"
                     >
@@ -95,6 +104,11 @@ function applyFilters() {
                                         class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
                                     >
                                         Type
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                                    >
+                                        Items
                                     </th>
                                     <th
                                         class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
@@ -142,13 +156,25 @@ function applyFilters() {
                                     >
                                         {{ order.order_type }}
                                     </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500">
+                                        <p class="max-w-xs truncate">
+                                            {{
+                                                (order.items ?? [])
+                                                    .map(
+                                                        (row) =>
+                                                            `${row.quantity}× ${row.name}`,
+                                                    )
+                                                    .join(", ") || "—"
+                                            }}
+                                        </p>
+                                    </td>
                                     <td
                                         class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
                                     >
-                                        ${{
-                                            Number(order.total_amount).toFixed(
-                                                2,
-                                            )
+                                        ₦{{
+                                            Number(
+                                                order.total_amount,
+                                            ).toLocaleString()
                                         }}
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4">
@@ -162,6 +188,11 @@ function applyFilters() {
                                         class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium"
                                     >
                                         <Link
+                                            v-if="
+                                                hasPermission(
+                                                    'manage-restaurant-orders',
+                                                )
+                                            "
                                             :href="
                                                 route(
                                                     'restaurant.edit',

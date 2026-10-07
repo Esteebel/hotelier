@@ -22,8 +22,10 @@ class FoodOrderRequest extends FormRequest
             'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
             'guest_id' => ['nullable', 'integer', 'exists:guests,id'],
             'order_type' => ['required', Rule::in(['dine_in', 'takeout', 'delivery'])],
-            'items' => ['nullable', 'array'],
-            'total_amount' => ['required', 'numeric', 'min:0'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.menu_item_id' => ['required', 'integer', 'exists:menu_items,id'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:99'],
+            'total_amount' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }

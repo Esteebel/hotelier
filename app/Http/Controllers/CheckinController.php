@@ -9,6 +9,7 @@ use App\Models\Guest;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Support\ContextualBranch;
+use App\Support\GuestNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -113,6 +114,17 @@ class CheckinController extends Controller
             Room::where('id', $data['room_id'])
                 ->update(['status' => RoomStatus::Occupied->value]);
 
+            $reservation = Reservation::find($data['reservation_id']);
+
+            GuestNotifier::notify(
+                Guest::find($data['guest_id']),
+                'Checked in',
+                'You have been checked in'
+                    .($reservation ? ' against reservation '.$reservation->reservation_number : '')
+                    .'. Enjoy your stay.',
+                'info',
+            );
+
             DB::commit();
 
             return redirect()
@@ -171,6 +183,20 @@ class CheckinController extends Controller
         return redirect()
             ->route('checkins.index')
             ->with('success', 'Check-in updated successfully.');
+    }
+
+    public function complete(Checkin $checkin): RedirectResponse
+    {
+        $this->authorize('update', $checkin);
+
+        $checkin->forceFill([
+            'status' => 'completed',
+            'processed_by' => auth()->id(),
+        ])->save();
+
+        return redirect()
+            ->route('checkins.index')
+            ->with('success', 'Check-in marked complete.');
     }
 
     public function destroy(Checkin $checkin): RedirectResponse

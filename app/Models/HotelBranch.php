@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\HotelStatus;
+use App\Support\ContextualOrganization;
 use Database\Factories\HotelBranchFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +17,17 @@ class HotelBranch extends Model
 {
     /** @use HasFactory<HotelBranchFactory> */
     use HasFactory, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('organization', function (Builder $builder): void {
+            $organizationId = ContextualOrganization::id();
+
+            if ($organizationId !== null) {
+                $builder->where('organization_id', $organizationId);
+            }
+        });
+    }
 
     protected $fillable = [
         'organization_id',

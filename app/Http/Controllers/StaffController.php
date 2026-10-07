@@ -95,6 +95,19 @@ class StaffController extends Controller
             ->with('success', 'Staff member updated successfully.');
     }
 
+    public function complete(Staff $staff): RedirectResponse
+    {
+        $this->authorize('update', $staff);
+
+        $staff->forceFill([
+            'status' => 'active',
+        ])->save();
+
+        return redirect()
+            ->route('staff.index')
+            ->with('success', $staff->first_name.' is now active.');
+    }
+
     public function destroy(Staff $staff): RedirectResponse
     {
         $this->authorize('delete', $staff);

@@ -99,11 +99,7 @@ class RoleController extends Controller
 
     private function authorizeView(Request $request): void
     {
-        if (! $request->user()->hasAnyPermission([
-            PermissionName::ViewUsers->value,
-            PermissionName::ManageUsers->value,
-            PermissionName::ManageRoles->value,
-        ])) {
+        if (! $request->user()->hasPermissionTo(PermissionName::ManageRoles->value)) {
             abort(403);
         }
     }

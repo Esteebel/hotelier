@@ -41,12 +41,20 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'user_type' => 'customer',
         ]);
+
+        $user->assignRole(
+            \Spatie\Permission\Models\Role::firstOrCreate([
+                'name' => 'customer',
+                'guard_name' => 'web',
+            ]),
+        );
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect(route('portal.home', absolute: false));
     }
 }

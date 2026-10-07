@@ -14,9 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\EnsureTenantBoundary::class,
         ]);
 
-        //
+        $middleware->alias([
+            'staff.area' => \App\Http\Middleware\EnsureStaffArea::class,
+            'customer.area' => \App\Http\Middleware\EnsureCustomerArea::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

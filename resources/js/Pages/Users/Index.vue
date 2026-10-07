@@ -8,6 +8,7 @@ import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import SelectInput from "@/Components/SelectInput.vue";
 import TextInput from "@/Components/TextInput.vue";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     users: {
@@ -29,6 +30,7 @@ const status = ref(props.filters.status ?? "");
 const role = ref(props.filters.role ?? "");
 const userToDelete = ref(null);
 const deleting = useForm({});
+const { hasPermission } = usePermissions();
 
 const reload = (preserveKey = false) => {
     router.get(
@@ -100,6 +102,7 @@ const formattedDate = (value) =>
                     </p>
                 </div>
                 <Link
+                    v-if="hasPermission('manage-users')"
                     :href="route('users.create')"
                     class="inline-flex shrink-0 items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
                 >
@@ -278,6 +281,7 @@ const formattedDate = (value) =>
                                     class="flex items-center justify-end gap-2"
                                 >
                                     <Link
+                                        v-if="hasPermission('manage-users')"
                                         :href="route('users.edit', user.id)"
                                         class="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                                         title="Edit"
@@ -288,6 +292,7 @@ const formattedDate = (value) =>
                                         />
                                     </Link>
                                     <button
+                                        v-if="hasPermission('manage-users')"
                                         type="button"
                                         class="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
                                         title="Delete"

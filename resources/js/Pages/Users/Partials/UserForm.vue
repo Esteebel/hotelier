@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import { useForm } from "@inertiajs/vue3";
 import AppIcon from "@/Components/AppIcon.vue";
 import InputError from "@/Components/InputError.vue";
@@ -21,12 +22,35 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    userTypes: {
+        type: Object,
+        default: () => ({}),
+    },
+    guests: {
+        type: Array,
+        default: () => [],
+    },
+    organizations: {
+        type: Array,
+        default: () => [],
+    },
+    canChooseOrganization: {
+        type: Boolean,
+        default: false,
+    },
+    defaultPassword: {
+        type: String,
+        default: "",
+    },
 });
 
 const form = useForm({
     name: props.user?.name ?? "",
     email: props.user?.email ?? "",
     status: props.user?.status ?? "active",
+    user_type: props.user?.user_type ?? "staff",
+    guest_id: props.user?.guest_id ?? "",
+    organization_id: props.user?.organization_id ?? "",
     password: "",
     password_confirmation: "",
     roles: props.user?.roles ?? [],
@@ -34,6 +58,12 @@ const form = useForm({
         ? props.user.branches.map((branch) => branch.id)
         : [],
 });
+
+const isCustomer = computed(() => form.user_type === "customer");
+
+const needsOrganization = computed(() =>
+    form.roles.includes("hotel-super-admin"),
+);
 
 const isRoleSelected = (name) => form.roles.includes(name);
 
@@ -116,18 +146,105 @@ const cancel = () => {
                     <InputError class="mt-2" :message="form.errors.status" />
                 </div>
 
+                <div>
+                    <InputLabel value="User Type" />
+                    <SelectInput
+                        v-model="form.user_type"
+                        class="mt-1 block w-full"
+                    >
+                        <option
+                            v-for="(label, value) in userTypes"
+                            :key="value"
+                            :value="value"
+                        >
+                            {{ label }}
+                        </option>
+                    </SelectInput>
+                    <InputError class="mt-2" :message="form.errors.user_type" />
+                </div>
+
+                <div>
+                    <InputLabel value="Organization" />
+                    <SelectInput
+                        v-model="form.organization_id"
+                        class="mt-1 block w-full"
+                        :disabled="!canChooseOrganization"
+                        :required="needsOrganization"
+                    >
+                        <option value="">
+                            {{
+                                canChooseOrganization
+                                    ? "No organization (platform)"
+                                    : "Your hotel (assigned automatically)"
+                            }}
+                        </option>
+                        <option
+                            v-for="organization in organizations"
+                            :key="organization.id"
+                            :value="organization.id"
+                        >
+                            {{ organization.name }}
+                        </option>
+                    </SelectInput>
+                    <p
+                        v-if="!canChooseOrganization"
+                        class="mt-1 text-xs text-gray-500"
+                    >
+                        Users you create are assigned to your own hotel
+                        automatically.
+                    </p>
+                    <p
+                        v-else-if="needsOrganization"
+                        class="mt-1 text-xs text-gray-500"
+                    >
+                        A hotel super admin must be assigned to a hotel.
+                    </p>
+                    <InputError
+                        class="mt-2"
+                        :message="form.errors.organization_id"
+                    />
+                </div>
+
+                <div v-if="isCustomer">
+                    <InputLabel value="Linked Guest" />
+                    <SelectInput
+                        v-model="form.guest_id"
+                        class="mt-1 block w-full"
+                    >
+                        <option value="">No guest linked</option>
+                        <option
+                            v-for="guest in guests"
+                            :key="guest.id"
+                            :value="guest.id"
+                        >
+                            {{ guest.label }}
+                        </option>
+                    </SelectInput>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Customers see their own reservations, bills and orders
+                        in the guest portal.
+                    </p>
+                    <InputError class="mt-2" :message="form.errors.guest_id" />
+                </div>
+
                 <div class="sm:col-span-2">
                     <InputLabel value="Password" />
                     <TextInput
                         v-model="form.password"
                         type="password"
                         class="mt-1 block w-full"
-                        :required="!props.user"
                         placeholder="••••••••"
                         autocomplete="new-password"
                     />
                     <p v-if="props.user" class="mt-1 text-xs text-gray-500">
                         Leave blank to keep current password.
+                    </p>
+                    <p v-else class="mt-1 text-xs text-gray-500">
+                        Leave blank to use the default sign-in password
+                        <span class="font-semibold text-gray-900">{{
+                            defaultPassword
+                        }}</span
+                        >. The user can change it from Profile after signing in.
                     </p>
                     <InputError class="mt-2" :message="form.errors.password" />
                 </div>

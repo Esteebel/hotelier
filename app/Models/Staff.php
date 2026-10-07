@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\ContextualBranch;
+use App\Models\Concerns\HasOrganizationScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,7 @@ class Staff extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use HasOrganizationScope;
 
     protected $fillable = [
         'staff_number',

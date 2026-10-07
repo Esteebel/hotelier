@@ -12,6 +12,26 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    userTypes: {
+        type: Object,
+        default: () => ({}),
+    },
+    guests: {
+        type: Array,
+        default: () => [],
+    },
+    organizations: {
+        type: Array,
+        default: () => [],
+    },
+    canChooseOrganization: {
+        type: Boolean,
+        default: false,
+    },
+    defaultPassword: {
+        type: String,
+        default: "",
+    },
 });
 </script>
 
@@ -30,6 +50,14 @@ const props = defineProps({
             </div>
         </template>
 
-        <UserForm :roles="roles" :branches="branches" />
+        <UserForm
+            :roles="roles"
+            :branches="branches"
+            :user-types="userTypes"
+            :guests="guests"
+            :organizations="organizations"
+            :can-choose-organization="canChooseOrganization"
+            :default-password="defaultPassword"
+        />
     </AuthenticatedLayout>
 </template>

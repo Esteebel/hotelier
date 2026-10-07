@@ -37,7 +37,7 @@ class HotelRoleManagementTest extends TestCase
         $role->syncPermissions(['view-dashboard', 'view-users']);
 
         $this->actingAs($this->user)
-            ->get(route('roles.index', ['search' => 'custom']))
+            ->get(route('roles.index', ['search' => 'custom-viewer']))
             ->assertOk()
             ->assertInertia(
                 fn (Assert $page) => $page
@@ -54,6 +54,46 @@ class HotelRoleManagementTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('roles.index'))
             ->assertForbidden();
+    }
+
+    public function test_role_form_page_exposes_permission_groups_with_checkbox_shape(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('roles.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Roles/Create')
+                    ->has('permissionGroups')
+                    ->has(
+                        'permissionGroups.0',
+                        fn (Assert $group) => $group
+                            ->has('label')
+                            ->has('permissions')
+                            ->has(
+                                'permissions.0',
+                                fn (Assert $permission) => $permission
+                                    ->has('name')
+                                    ->has('label'),
+                            ),
+                    ),
+            );
+    }
+
+    public function test_role_form_page_for_edit_exposes_permission_groups(): void
+    {
+        $role = Role::create(['name' => 'auditor']);
+        $role->syncPermissions(['view-reports']);
+
+        $this->actingAs($this->user)
+            ->get(route('roles.edit', $role))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Roles/Edit')
+                    ->has('permissionGroups.0.permissions.0.name')
+                    ->where('role.name', 'auditor'),
+            );
     }
 
     public function test_role_can_be_created_with_permissions_synced(): void

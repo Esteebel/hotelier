@@ -7,6 +7,7 @@ use App\Models\Guest;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Support\ContextualBranch;
+use App\Support\GuestNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -84,7 +85,15 @@ class ReservationController extends Controller
         $data['special_requests'] = $data['special_requests'] ?? ($data['notes'] ?? null);
         unset($data['notes']);
 
-        Reservation::create($data);
+        $reservation = Reservation::create($data);
+
+        GuestNotifier::notify(
+            $reservation->guest,
+            'Reservation confirmed',
+            'Your reservation '.$reservation->reservation_number.' ('.$reservation->check_in->toDateString()
+                .' to '.$reservation->check_out->toDateString().') has been confirmed.',
+            'success',
+        );
 
         return redirect()
             ->route('reservations.index')

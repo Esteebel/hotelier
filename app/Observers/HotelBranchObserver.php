@@ -28,6 +28,7 @@ class HotelBranchObserver
 
         while (
             HotelBranch::query()
+                ->withoutGlobalScope('organization')
                 ->where('slug', $slug)
                 ->when($branch->exists, fn ($query) => $query->whereKeyNot($branch->getKey()))
                 ->exists()

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+
+use App\Models\Concerns\HasOrganizationScope;
 use Database\Factories\RoomTypeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +14,7 @@ class RoomType extends Model
 {
     /** @use HasFactory<RoomTypeFactory> */
     use HasFactory;
+    use HasOrganizationScope;
 
     protected $fillable = [
         'branch_id',

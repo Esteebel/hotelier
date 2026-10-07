@@ -19,7 +19,10 @@ class PaymentRequest extends FormRequest
             'branch_id' => ['required', 'integer', 'exists:hotel_branches,id'],
             'reservation_id' => ['nullable', 'integer', 'exists:reservations,id'],
             'guest_id' => ['required', 'integer', 'exists:guests,id'],
-            'payment_number' => ['required', 'string', 'max:30', Rule::unique('payments')],
+            'payment_number' => [
+                'required', 'string', 'max:30',
+                Rule::unique('payments')->ignore($this->route('payment')),
+            ],
             'reference' => ['nullable', 'string', 'max:60'],
             'method' => ['required', Rule::in([
                 'cash', 'card', 'bank_transfer', 'mobile_money', 'cheque', 'credit_account',

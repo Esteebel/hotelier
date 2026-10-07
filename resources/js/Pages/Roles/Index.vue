@@ -7,6 +7,7 @@ import DangerButton from "@/Components/DangerButton.vue";
 import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     roles: {
@@ -22,6 +23,7 @@ const props = defineProps({
 const search = ref(props.filters.search ?? "");
 const roleToDelete = ref(null);
 const deleting = useForm({});
+const { hasPermission } = usePermissions();
 
 const reload = (preserveKey = false) => {
     router.get(
@@ -93,6 +95,7 @@ const formatDate = (date) =>
                     </p>
                 </div>
                 <Link
+                    v-if="hasPermission('manage-roles')"
                     :href="route('roles.create')"
                     class="inline-flex shrink-0 items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
                 >
@@ -203,6 +206,7 @@ const formatDate = (date) =>
                             </td>
                             <td class="whitespace-nowrap px-5 py-4 text-right">
                                 <div
+                                    v-if="hasPermission('manage-roles')"
                                     class="flex items-center justify-end gap-2"
                                 >
                                     <Link

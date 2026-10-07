@@ -96,6 +96,19 @@ class ExpenseController extends Controller
             ->with('success', 'Expense updated successfully.');
     }
 
+    public function complete(Expense $expense): RedirectResponse
+    {
+        $this->authorize('update', $expense);
+
+        $expense->forceFill([
+            'status' => 'completed',
+        ])->save();
+
+        return redirect()
+            ->route('expenses.index')
+            ->with('success', 'Expense marked complete.');
+    }
+
     public function destroy(Expense $expense): RedirectResponse
     {
         $this->authorize('delete', $expense);

@@ -56,6 +56,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Default Sign-In Password for Staff Accounts
+    |--------------------------------------------------------------------------
+    |
+    | When an administrator creates a staff user without entering a password,
+    | the account is created with this value so it can be used to sign in
+    | immediately. Users should change it from Profile after signing in.
+    |
+    */
+
+    'default_user_password' => env('DEFAULT_USER_PASSWORD', 'password'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

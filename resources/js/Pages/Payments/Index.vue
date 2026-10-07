@@ -10,6 +10,7 @@ import TextInput from "@/Components/TextInput.vue";
 import SelectInput from "@/Components/SelectInput.vue";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     payments: { type: Object, required: true },
@@ -23,6 +24,7 @@ const statusFilter = ref(props.filters.status ?? "");
 const paymentToDelete = ref(null);
 const deleting = ref(false);
 const deletingForm = useForm({});
+const { hasPermission } = usePermissions();
 
 const modelOptions = ref([]);
 
@@ -137,6 +139,7 @@ onMounted(() => {
                     </p>
                 </div>
                 <Link
+                    v-if="hasPermission('manage-payments')"
                     :href="route('payments.create')"
                     class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
                 >
@@ -278,6 +281,7 @@ onMounted(() => {
                             </td>
                             <td class="whitespace-nowrap px-5 py-4 text-right">
                                 <div
+                                    v-if="hasPermission('manage-payments')"
                                     class="flex items-center justify-end gap-2"
                                 >
                                     <Link

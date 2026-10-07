@@ -3,6 +3,7 @@ import { ref } from "vue";
 import AppIcon from "@/Components/AppIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Link, router } from "@inertiajs/vue3";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     checkouts: Object,
@@ -12,6 +13,7 @@ const props = defineProps({
 
 const search = ref(props.filters?.search ?? "");
 const statusFilter = ref(props.filters?.status ?? "");
+const { hasPermission } = usePermissions();
 
 const statusStyles = {
     completed: "bg-emerald-100 text-emerald-800",
@@ -74,6 +76,7 @@ function applyFilters() {
                         </select>
                     </div>
                     <Link
+                        v-if="hasPermission('manage-checkouts')"
                         :href="route('checkouts.create')"
                         class="bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold"
                     >
@@ -200,9 +203,14 @@ function applyFilters() {
                                         class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium"
                                     >
                                         <Link
+                                            v-if="
+                                                hasPermission(
+                                                    'manage-checkouts',
+                                                )
+                                            "
                                             :href="
                                                 route(
-                                                    'checkouts.show',
+                                                    'checkouts.edit',
                                                     checkout.id,
                                                 )
                                             "

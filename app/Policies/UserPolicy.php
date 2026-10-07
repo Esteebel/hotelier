@@ -16,7 +16,8 @@ class UserPolicy
     {
         return $this->viewAny($user)
             || $user->id === $userBeingViewed->id
-            || $user->hasPermissionTo(PermissionName::ManageUsers->value);
+            || ($this->withinScope($user, $userBeingViewed)
+                && $user->hasPermissionTo(PermissionName::ManageUsers->value));
     }
 
     public function create(User $user): bool
@@ -26,16 +27,28 @@ class UserPolicy
 
     public function update(User $user, User $userBeingViewed): bool
     {
-        return $this->create($user)
+        return ($this->create($user) && $this->withinScope($user, $userBeingViewed))
             || $user->id === $userBeingViewed->id;
     }
 
-    public function destroy(User $user, User $userBeingViewed): bool
+    public function delete(User $user, User $userBeingViewed): bool
     {
         if ($user->id === $userBeingViewed->id) {
             return false;
         }
 
-        return $this->create($user);
+        return $this->create($user) && $this->withinScope($user, $userBeingViewed);
+    }
+
+    /**
+     * Organization-scoped users may only manage users of their own organization.
+     */
+    private function withinScope(User $user, User $userBeingViewed): bool
+    {
+        if (! $user->isOrgScoped()) {
+            return true;
+        }
+
+        return $userBeingViewed->organization_id === $user->organization_id;
     }
 }

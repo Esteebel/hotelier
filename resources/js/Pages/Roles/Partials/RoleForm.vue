@@ -91,7 +91,7 @@ const cancel = () => {
                     class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"
                 >
                     <label
-                        v-for="item in group.items"
+                        v-for="item in group.permissions"
                         :key="item.name"
                         class="flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
                     >

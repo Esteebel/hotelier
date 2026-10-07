@@ -65,6 +65,7 @@ enum PermissionName: string
 
     // Restaurant / Food Orders
     case ManageRestaurantOrders = 'manage-restaurant-orders';
+    case ManageMenuItems = 'manage-menu-items';
 
     // Laundry
     case ViewLaundry = 'view-laundry';
@@ -143,6 +144,7 @@ enum PermissionName: string
             'Services & Dining' => [
                 self::ViewServices, self::ManageServices,
                 self::ManageRestaurantOrders,
+                self::ManageMenuItems,
             ],
             'Finance' => [
                 self::ViewPayments, self::ManagePayments,

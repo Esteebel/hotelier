@@ -22,6 +22,7 @@ class PermissionSeeder extends Seeder
         // 2. Create roles
         $roles = collect([
             'super-admin' => 'Full system access.',
+            'hotel-super-admin' => 'Super admin of a single hotel: oversees all branches and creates new branches. No access to the organizations module.',
             'hotel-admin' => 'Manage hotel operations and staff.',
             'manager' => 'Operational and management modules.',
             'receptionist' => 'Reservations, guests, check-in, check-out, payments, invoices.',
@@ -29,6 +30,7 @@ class PermissionSeeder extends Seeder
             'housekeeper' => 'Housekeeping tasks and room status.',
             'maintenance-staff' => 'Maintenance requests and tracking.',
             'staff' => 'Limited general access.',
+            'customer' => 'Guest portal access: menu, reservations and bills.',
         ])->map(fn (string $desc, string $name) => Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']));
 
         // 3. Assign permissions to each role
@@ -36,6 +38,14 @@ class PermissionSeeder extends Seeder
 
         $roles['hotel-admin']->syncPermissions(
             $allPermissions->filter(fn (Permission $p) => ! str_starts_with($p->name, 'manage-roles')),
+        );
+
+        $roles['hotel-super-admin']->syncPermissions(
+            $allPermissions->filter(fn (Permission $p) => ! in_array($p->name, [
+                PermissionName::ViewHotels->value,
+                PermissionName::ManageHotels->value,
+                PermissionName::ManageRoles->value,
+            ])),
         );
 
         $roles['manager']->syncPermissions(
@@ -62,6 +72,7 @@ class PermissionSeeder extends Seeder
                 PermissionName::ViewServices->value,
                 PermissionName::ManageServices->value,
                 PermissionName::ManageRestaurantOrders->value,
+                PermissionName::ManageMenuItems->value,
                 PermissionName::ViewLaundry->value,
                 PermissionName::ManageLaundry->value,
                 PermissionName::ViewPayments->value,

@@ -7,6 +7,7 @@ import DangerButton from "@/Components/DangerButton.vue";
 import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     reservations: {
@@ -28,6 +29,7 @@ const statusFilter = ref(props.filters.status ?? "");
 const reservationToDelete = ref(null);
 const deleting = useForm({});
 const cancelling = useForm({});
+const { hasPermission } = usePermissions();
 
 const reload = () => {
     router.get(
@@ -115,6 +117,7 @@ const statusBadge = (res) => {
                     </p>
                 </div>
                 <Link
+                    v-if="hasPermission('create-reservations')"
                     :href="route('reservations.create')"
                     class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
                 >
@@ -268,7 +271,9 @@ const statusBadge = (res) => {
                                 >
                                     <Link
                                         v-if="
-                                            reservation.status !== 'cancelled'
+                                            reservation.status !==
+                                                'cancelled' &&
+                                            hasPermission('manage-reservations')
                                         "
                                         :href="
                                             route(
@@ -299,6 +304,9 @@ const statusBadge = (res) => {
                                         />
                                     </button>
                                     <button
+                                        v-if="
+                                            hasPermission('manage-reservations')
+                                        "
                                         type="button"
                                         class="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
                                         title="Delete"

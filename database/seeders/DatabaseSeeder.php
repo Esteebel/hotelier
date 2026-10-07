@@ -63,7 +63,26 @@ class DatabaseSeeder extends Seeder
             fn (User $user) => $user->branches()->syncWithoutDetaching($branches->pluck('id')),
         );
 
-        // 6. Demo data (guests, reservations, payments, invoices, expenses, staff)
-        $this->call(DemoDataSeeder::class);
+        // Tenant ownership: every non-super-admin belongs to the organization
+        // of their first branch. Super admins stay platform-level (NULL).
+        collect([$hotelAdmin, $manager, $receptionist])->each(function (User $user): void {
+            $organizationId = $user->branches()->first()?->organization_id;
+
+            if ($organizationId) {
+                $user->update(['organization_id' => $organizationId]);
+            }
+        });
+
+        // // 6. Demo data (guests, reservations, payments, invoices, expenses, staff)
+        // $this->call(DemoDataSeeder::class);
+
+        // // 7. Restaurant menu items
+        // $this->call(MenuSeeder::class);
+
+        // // 8. Demo guest-portal customer
+        // $this->call(DemoCustomerSeeder::class);
+
+        // // 9. Second organization + its own hotel admin (tenant isolation demo)
+        // $this->call(SecondaryOrganizationSeeder::class);
     }
 }

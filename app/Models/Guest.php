@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\GuestStatus;
 use App\Enums\ReservationStatus;
 use App\Support\ContextualBranch;
+use App\Models\Concerns\HasOrganizationScope;
 use Database\Factories\GuestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,7 @@ class Guest extends Model
 {
     /** @use HasFactory<GuestFactory> */
     use HasFactory, SoftDeletes;
+    use HasOrganizationScope;
 
     protected $fillable = [
         'branch_id',
@@ -75,6 +77,10 @@ class Guest extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('branchScoped', function ($builder) {
+            if (request()->filled('branch_id')) {
+                return;
+            }
+
             $builder->where('branch_id', ContextualBranch::id());
         });
     }

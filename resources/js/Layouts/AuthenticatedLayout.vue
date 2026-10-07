@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { Link, router } from "@inertiajs/vue3";
 import AppIcon from "@/Components/AppIcon.vue";
 import Dropdown from "@/Components/Dropdown.vue";
@@ -7,6 +7,7 @@ import DropdownLink from "@/Components/DropdownLink.vue";
 import SidebarNavDisabled from "@/Components/SidebarNavDisabled.vue";
 import SidebarNavLink from "@/Components/SidebarNavLink.vue";
 import FlashToast from "@/Components/FlashToast.vue";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const showingNavigationSidebar = ref(false);
 
@@ -94,6 +95,12 @@ const navigation = [
                 icon: "utensils",
                 href: "restaurant.index",
                 active: "restaurant.*",
+            },
+            {
+                label: "Menu",
+                icon: "inbox",
+                href: "menu.index",
+                active: "menu.*",
             },
             {
                 label: "Laundry",
@@ -196,6 +203,49 @@ const isActive = (item) =>
     item.href ? route().current(item.active ?? item.href) : false;
 const isDisabled = (item) => !item.href;
 
+const navPermissions = {
+    dashboard: "view-dashboard",
+    "organizations.index": "view-hotels",
+    "branches.index": "view-branches",
+    "room-types.index": "view-room-types",
+    "rooms.index": "view-rooms",
+    "reservations.index": "view-reservations",
+    "guests.index": "view-guests",
+    "room-transfers.index": "manage-room-transfers",
+    "housekeeping.index": "view-housekeeping",
+    "maintenance.index": "view-maintenance",
+    "services.index": "view-services",
+    "restaurant.index": "manage-restaurant-orders",
+    "menu.index": "manage-menu-items",
+    "laundry.index": "view-laundry",
+    "checkins.index": "manage-checkins",
+    "checkouts.index": "manage-checkouts",
+    "expenses.index": "view-expenses",
+    "staff.index": "view-staff",
+    "notifications.index": "view-notifications",
+    "audit-logs.index": "view-audit-logs",
+    "payments.index": "view-payments",
+    "invoices.index": "view-invoices",
+    "reports.index": "view-reports",
+    "users.index": "view-users",
+    "roles.index": "manage-roles",
+    "settings.index": "manage-settings",
+};
+
+const { hasPermission } = usePermissions();
+
+const visibleNavigation = computed(() =>
+    navigation
+        .map((group) => ({
+            ...group,
+            items: group.items.filter((item) => {
+                const required = navPermissions[item.href];
+                return !required || hasPermission(required);
+            }),
+        }))
+        .filter((group) => group.items.length > 0),
+);
+
 const switchBranch = (id) => {
     router.post(
         route("branches.switch"),
@@ -204,6 +254,16 @@ const switchBranch = (id) => {
             preserveState: true,
             preserveScroll: true,
             only: ["branches", "activeBranch", "flash"],
+        },
+    );
+};
+
+const switchOrganization = (id) => {
+    router.post(
+        route("organizations.switch"),
+        { organization: id },
+        {
+            preserveScroll: true,
         },
     );
 };
@@ -258,7 +318,7 @@ const switchBranch = (id) => {
 
             <!-- Navigation -->
             <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-                <div v-for="group in navigation" :key="group.label">
+                <div v-for="group in visibleNavigation" :key="group.label">
                     <p
                         class="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400"
                     >
@@ -318,6 +378,83 @@ const switchBranch = (id) => {
                 >
                     <AppIcon name="menu" />
                 </button>
+
+                <!-- Organization selector -->
+                <div
+                    v-if="$page.props.canFilterOrganizations"
+                    class="hidden items-center md:flex"
+                >
+                    <Dropdown align="left" width="64">
+                        <template #trigger>
+                            <button
+                                type="button"
+                                class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                <AppIcon
+                                    name="building"
+                                    classes="[&>svg]:h-4 [&>svg]:w-4 text-gray-400"
+                                />
+                                <span class="max-w-[10rem] truncate">
+                                    {{
+                                        $page.props.activeOrganizationId
+                                            ? ($page.props.navOrganizations.find(
+                                                  (org) =>
+                                                      org.id ===
+                                                      $page.props
+                                                          .activeOrganizationId,
+                                              )?.name ?? "All organizations")
+                                            : "All organizations"
+                                    }}
+                                </span>
+                                <AppIcon
+                                    name="chevronDown"
+                                    classes="[&>svg]:h-4 [&>svg]:w-4 text-gray-400"
+                                />
+                            </button>
+                        </template>
+
+                        <template #content>
+                            <div
+                                class="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400"
+                            >
+                                Organization
+                            </div>
+                            <button
+                                type="button"
+                                class="flex w-full items-center justify-between gap-3 px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-100"
+                                :class="{
+                                    'bg-indigo-50 font-medium text-indigo-700':
+                                        !$page.props.activeOrganizationId,
+                                }"
+                                @click="switchOrganization(null)"
+                            >
+                                <span class="truncate">
+                                    All organizations
+                                </span>
+                                <span class="text-xs text-gray-400">
+                                    Everything
+                                </span>
+                            </button>
+                            <button
+                                v-for="org in $page.props.navOrganizations"
+                                :key="org.id"
+                                type="button"
+                                class="flex w-full items-center justify-between gap-3 px-4 py-2 text-start text-sm text-gray-700 hover:bg-gray-100"
+                                :class="{
+                                    'bg-indigo-50 font-medium text-indigo-700':
+                                        $page.props.activeOrganizationId ===
+                                        org.id,
+                                }"
+                                @click="switchOrganization(org.id)"
+                            >
+                                <span class="truncate">{{ org.name }}</span>
+                                <span class="text-xs text-gray-400">
+                                    {{ org.code }}
+                                </span>
+                            </button>
+                        </template>
+                    </Dropdown>
+                </div>
 
                 <!-- Branch selector -->
                 <div class="flex items-center">

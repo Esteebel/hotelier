@@ -15,8 +15,7 @@ class HotelBranchPolicy
 
     public function view(User $user, HotelBranch $branch): bool
     {
-        return $this->viewAny($user)
-            && ($user->hasRole('super-admin') || $user->branches()->whereKey($branch->id)->exists());
+        return $this->viewAny($user) && $this->withinScope($user, $branch);
     }
 
     public function create(User $user): bool
@@ -26,11 +25,23 @@ class HotelBranchPolicy
 
     public function update(User $user, HotelBranch $branch): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageBranches->value);
+        return $user->hasPermissionTo(PermissionName::ManageBranches->value)
+            && $this->withinScope($user, $branch);
     }
 
     public function delete(User $user, HotelBranch $branch): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageBranches->value);
+        return $user->hasPermissionTo(PermissionName::ManageBranches->value)
+            && $this->withinScope($user, $branch);
+    }
+
+    private function withinScope(User $user, HotelBranch $branch): bool
+    {
+        if (! $user->isOrgScoped()) {
+            return true;
+        }
+
+        return $user->organization_id === $branch->organization_id
+            || $user->branches()->whereKey($branch->id)->exists();
     }
 }

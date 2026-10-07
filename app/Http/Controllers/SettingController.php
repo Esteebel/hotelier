@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateSettingRequest;
 use App\Models\HotelSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,12 +26,14 @@ class SettingController extends Controller
     {
         $this->authorizeManage($request);
 
-        $saved = HotelSetting::query()
-            ->get(['key', 'value'])
-            ->mapWithKeys(fn (HotelSetting $setting) => [$setting->key => $setting->value]);
+        $settings = Cache::remember('hotel.settings', now()->addMinutes(5), function () {
+            $saved = HotelSetting::query()
+                ->get(['key', 'value'])
+                ->mapWithKeys(fn (HotelSetting $setting) => [$setting->key => $setting->value]);
 
-        $settings = collect(self::DEFAULTS)
-            ->map(fn (mixed $default, string $key) => $saved[$key] ?? $default);
+            return collect(self::DEFAULTS)
+                ->map(fn (mixed $default, string $key) => $saved[$key] ?? $default);
+        });
 
         return Inertia::render('Settings/Index', [
             'settings' => $settings,
@@ -47,6 +50,8 @@ class SettingController extends Controller
                 ['value' => $value],
             );
         }
+
+        Cache::forget('hotel.settings');
 
         return redirect()
             ->route('settings.index')

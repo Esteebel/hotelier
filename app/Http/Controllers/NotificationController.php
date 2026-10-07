@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\PermissionName;
+use App\Http\Requests\NotificationRequest;
 use App\Models\Notification;
 use App\Support\ContextualBranch;
 use Illuminate\Http\RedirectResponse;
@@ -53,16 +53,11 @@ class NotificationController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(NotificationRequest $request): RedirectResponse
     {
         $this->authorize('create', Notification::class);
 
-        $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'message' => ['nullable', 'string', 'max:2000'],
-            'type' => ['required', 'string', 'max:50'],
-        ]);
-
+        $data = $request->validated();
         $data['notification_number'] = Notification::nextNotificationNumber();
         $data['branch_id'] = ContextualBranch::id();
         $data['status'] = 'unread';
@@ -72,6 +67,40 @@ class NotificationController extends Controller
         return redirect()
             ->route('notifications.index')
             ->with('success', 'Notification created successfully.');
+    }
+
+    public function edit(Notification $notification): Response
+    {
+        $this->authorize('update', $notification);
+
+        return Inertia::render('Notifications/Edit', [
+            'notification' => $notification,
+            'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
+        ]);
+    }
+
+    public function update(NotificationRequest $request, Notification $notification): RedirectResponse
+    {
+        $this->authorize('update', $notification);
+
+        $notification->update($request->validated());
+
+        return redirect()
+            ->route('notifications.index')
+            ->with('success', 'Notification updated successfully.');
+    }
+
+    public function complete(Notification $notification): RedirectResponse
+    {
+        $this->authorize('update', $notification);
+
+        $notification->forceFill([
+            'status' => 'read',
+        ])->save();
+
+        return redirect()
+            ->route('notifications.index')
+            ->with('success', 'Notification marked as read.');
     }
 
     public function destroy(Notification $notification): RedirectResponse

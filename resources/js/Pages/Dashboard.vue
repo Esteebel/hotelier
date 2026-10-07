@@ -8,6 +8,7 @@ const props = defineProps({
     recent_reservations: Array,
     room_type_breakdown: Array,
     activeBranch: Object,
+    scopeLabel: String,
 });
 
 const today = new Date().toLocaleDateString("en-GB", {
@@ -24,6 +25,7 @@ const summaryCards = [
         detail: `${props.stats.occupied_rooms} of ${props.stats.total_rooms} rooms`,
         icon: "trendingUp",
         accent: "bg-indigo-100 text-indigo-700",
+        href: route("rooms.index", { status: "occupied" }),
     },
     {
         label: "Today's Arrivals",
@@ -31,6 +33,7 @@ const summaryCards = [
         detail: "expected check-ins",
         icon: "userRound",
         accent: "bg-emerald-100 text-emerald-700",
+        href: route("reservations.index", { status: "confirmed" }),
     },
     {
         label: "Today's Departures",
@@ -38,6 +41,7 @@ const summaryCards = [
         detail: "due to depart",
         icon: "door",
         accent: "bg-amber-100 text-amber-700",
+        href: route("checkouts.index"),
     },
     {
         label: "Revenue Today",
@@ -45,6 +49,7 @@ const summaryCards = [
         detail: "confirmed payments",
         icon: "banknote",
         accent: "bg-rose-100 text-rose-700",
+        href: route("payments.index", { status: "completed" }),
     },
 ];
 
@@ -53,31 +58,37 @@ const secondaryCards = [
         label: "Available Rooms",
         value: props.stats.available_rooms,
         icon: "bed",
+        href: route("rooms.index", { status: "available" }),
     },
     {
         label: "Dirty Rooms",
         value: props.stats.dirty_rooms,
         icon: "cleaning",
+        href: route("rooms.index", { status: "dirty" }),
     },
     {
         label: "Confirmed Reservations",
         value: props.stats.confirmed_reservations,
         icon: "calendar",
+        href: route("reservations.index", { status: "confirmed" }),
     },
     {
         label: "Active Guests",
         value: props.stats.active_guests,
         icon: "users",
+        href: route("reservations.index", { status: "checked_in" }),
     },
     {
         label: "Month Revenue",
         value: formatCurrency(props.stats.month_revenue),
         icon: "trendingUp",
+        href: route("payments.index", { status: "completed" }),
     },
     {
         label: "Outstanding Invoices",
         value: formatCurrency(props.stats.outstanding_invoices),
         icon: "fileText",
+        href: route("invoices.index"),
     },
 ];
 
@@ -102,9 +113,11 @@ function formatCurrency(amount) {
                 </h2>
                 <p class="text-sm text-gray-500">
                     {{
-                        $page.props.activeBranch
-                            ? `${$page.props.activeBranch.name} · ${today}`
-                            : today
+                        $page.props.scopeLabel
+                            ? `${$page.props.scopeLabel} · ${today}`
+                            : $page.props.activeBranch
+                              ? `${$page.props.activeBranch.name} · ${today}`
+                              : today
                     }}
                 </p>
             </div>
@@ -113,10 +126,11 @@ function formatCurrency(amount) {
         <div class="space-y-6">
             <!-- Primary summary cards -->
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div
+                <Link
                     v-for="stat in summaryCards"
                     :key="stat.label"
-                    class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+                    :href="stat.href"
+                    class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow-md"
                 >
                     <div class="flex items-center justify-between">
                         <p class="text-sm font-medium text-gray-500">
@@ -135,16 +149,22 @@ function formatCurrency(amount) {
                     <p class="mt-2 text-2xl font-bold text-gray-900">
                         {{ stat.value }}
                     </p>
-                    <p class="mt-1 text-xs text-gray-400">{{ stat.detail }}</p>
-                </div>
+                    <p class="mt-1 text-xs text-gray-400">
+                        {{ stat.detail }}
+                        <span class="font-medium text-indigo-500">
+                            · View details
+                        </span>
+                    </p>
+                </Link>
             </div>
 
             <!-- Secondary metrics -->
             <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-                <div
+                <Link
                     v-for="item in secondaryCards"
                     :key="item.label"
-                    class="rounded-lg border border-gray-100 bg-white p-4 text-center shadow-sm"
+                    :href="item.href"
+                    class="rounded-lg border border-gray-100 bg-white p-4 text-center shadow-sm transition hover:border-indigo-300 hover:shadow-md"
                 >
                     <AppIcon
                         :name="item.icon"
@@ -154,7 +174,7 @@ function formatCurrency(amount) {
                         {{ item.value }}
                     </p>
                     <p class="mt-1 text-xs text-gray-500">{{ item.label }}</p>
-                </div>
+                </Link>
             </div>
 
             <!-- Room Type Breakdown -->
@@ -168,6 +188,12 @@ function formatCurrency(amount) {
                     <h3 class="text-sm font-semibold text-gray-900">
                         Room Type Breakdown
                     </h3>
+                    <Link
+                        :href="route('room-types.index')"
+                        class="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                    >
+                        View room types
+                    </Link>
                 </div>
                 <div class="p-5">
                     <div class="space-y-3">

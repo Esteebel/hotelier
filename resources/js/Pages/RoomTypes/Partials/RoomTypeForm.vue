@@ -47,6 +47,7 @@ const cancel = () => {
 <template>
     <form @submit.prevent="submit" class="space-y-6">
         <input type="hidden" name="branch_id" :value="form.branch_id" />
+        <InputError :message="form.errors.branch_id" />
 
         <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             <h3 class="text-sm font-semibold text-gray-900">

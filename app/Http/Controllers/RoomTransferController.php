@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\PermissionName;
+use App\Enums\RoomStatus;
 use App\Http\Requests\RoomTransferRequest;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Models\RoomTransfer;
 use App\Support\ContextualBranch;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -117,14 +118,40 @@ class RoomTransferController extends Controller
     {
         $this->authorize('update', $roomTransfer);
 
-        $roomTransfer->forceFill([
-            'status' => 'completed',
-            'handled_by' => auth()->id(),
-            'completed_at' => now(),
-        ])->save();
+        DB::transaction(function () use ($roomTransfer) {
+            $roomTransfer->forceFill([
+                'status' => 'completed',
+                'handled_by' => auth()->id(),
+            ])->save();
+
+            if ($roomTransfer->from_room_id) {
+                Room::where('id', $roomTransfer->from_room_id)
+                    ->update(['status' => RoomStatus::Dirty->value]);
+            }
+
+            if ($roomTransfer->to_room_id && $roomTransfer->reservation_id) {
+                $reservation = Reservation::find($roomTransfer->reservation_id);
+                if ($reservation && $reservation->status === 'checked_in') {
+                    Room::where('id', $roomTransfer->to_room_id)
+                        ->update(['status' => RoomStatus::Occupied->value]);
+                    $reservation->update(['room_id' => $roomTransfer->to_room_id]);
+                }
+            }
+        });
 
         return redirect()
             ->route('room-transfers.index')
             ->with('success', 'Room transfer completed.');
+    }
+
+    public function destroy(RoomTransfer $roomTransfer): RedirectResponse
+    {
+        $this->authorize('delete', $roomTransfer);
+
+        $roomTransfer->delete();
+
+        return redirect()
+            ->route('room-transfers.index')
+            ->with('success', 'Room transfer deleted.');
     }
 }

@@ -28,6 +28,7 @@ class HotelOrganizationObserver
 
         while (
             HotelOrganization::query()
+                ->withoutGlobalScope('organization')
                 ->where('slug', $slug)
                 ->when($hotel->exists, fn ($query) => $query->whereKeyNot($hotel->getKey()))
                 ->exists()

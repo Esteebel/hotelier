@@ -36,14 +36,14 @@ class ReservationService
             ->where('status', RoomStatus::Available->value)
             ->where('is_active', true)
             ->whereIn('id', $branchRoomIds->diff($bookedRoomIds))
-            ->with('roomType:id,name,base_rate')
+            ->with('roomType:id,name,base_price')
             ->orderBy('room_number')
             ->get()
             ->map(fn (Room $room) => [
                 'id' => $room->id,
                 'room_number' => $room->room_number,
                 'room_type' => $room->roomType?->name,
-                'rate' => (float) ($room->roomType?->base_rate ?? 0),
+                'rate' => (float) ($room->roomType?->base_price ?? 0),
             ])
             ->all();
     }

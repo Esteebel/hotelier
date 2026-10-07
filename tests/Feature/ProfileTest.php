@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -19,6 +20,47 @@ class ProfileTest extends TestCase
             ->get('/profile');
 
         $response->assertOk();
+    }
+
+    public function test_password_can_be_updated_with_correct_current_password(): void
+    {
+        $user = User::factory()->create(['password' => 'OldSecret123!']);
+
+        $this->actingAs($user)
+            ->put(route('password.update'), [
+                'current_password' => 'OldSecret123!',
+                'password' => 'NewSecret456!',
+                'password_confirmation' => 'NewSecret456!',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse(
+            Auth::attempt(['email' => $user->email, 'password' => 'OldSecret123!']),
+        );
+        Auth::logout();
+
+        $this->assertTrue(
+            Auth::attempt(['email' => $user->email, 'password' => 'NewSecret456!']),
+        );
+        Auth::logout();
+    }
+
+    public function test_password_update_requires_correct_current_password(): void
+    {
+        $user = User::factory()->create(['password' => 'OldSecret123!']);
+
+        $this->actingAs($user)
+            ->put(route('password.update'), [
+                'current_password' => 'WrongPassword1!',
+                'password' => 'NewSecret456!',
+                'password_confirmation' => 'NewSecret456!',
+            ])
+            ->assertSessionHasErrors('current_password');
+
+        $this->assertTrue(
+            Auth::attempt(['email' => $user->email, 'password' => 'OldSecret123!']),
+        );
+        Auth::logout();
     }
 
     public function test_profile_information_can_be_updated(): void

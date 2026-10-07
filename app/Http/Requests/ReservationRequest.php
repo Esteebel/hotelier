@@ -19,7 +19,10 @@ class ReservationRequest extends FormRequest
             'branch_id' => ['required', 'integer', 'exists:hotel_branches,id'],
             'guest_id' => ['required', 'integer', 'exists:guests,id'],
             'room_id' => ['nullable', 'integer', 'exists:rooms,id'],
-            'reservation_number' => ['required', 'string', 'max:30', Rule::unique('reservations')],
+            'reservation_number' => [
+                'required', 'string', 'max:30',
+                Rule::unique('reservations')->ignore($this->route('reservation')),
+            ],
             'check_in' => ['required', 'date'],
             'check_out' => ['required', 'date', 'after:check_in'],
             'adults' => ['required', 'integer', 'min:1', 'max:50'],

@@ -33,7 +33,13 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $intended = session()->pull('url.intended');
+
+        if ($request->user()->isCustomer()) {
+            return redirect()->to($intended ?? route('portal.home', absolute: false));
+        }
+
+        return redirect()->to($intended ?? route('dashboard', absolute: false));
     }
 
     /**

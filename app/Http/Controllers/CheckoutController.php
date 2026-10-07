@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Support\ContextualBranch;
+use App\Support\GuestNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -124,6 +125,15 @@ class CheckoutController extends Controller
             Room::where('id', $data['room_id'])
                 ->update(['status' => RoomStatus::Dirty->value]);
 
+            GuestNotifier::notify(
+                Guest::find($data['guest_id']),
+                'Checked out',
+                'Check-out completed for reservation '.$reservation->reservation_number
+                    .'. Total: ₦'.number_format((float) $data['total_charges'], 2)
+                    .'. Balance due: ₦'.number_format((float) $data['balance_due'], 2).'.',
+                'info',
+            );
+
             DB::commit();
 
             return redirect()
@@ -182,6 +192,21 @@ class CheckoutController extends Controller
         return redirect()
             ->route('checkouts.index')
             ->with('success', 'Check-out updated successfully.');
+    }
+
+    public function complete(Checkout $checkout): RedirectResponse
+    {
+        $this->authorize('update', $checkout);
+
+        $checkout->forceFill([
+            'status' => 'completed',
+            'processed_by' => auth()->id(),
+            'checked_out_at' => $checkout->checked_out_at ?? now(),
+        ])->save();
+
+        return redirect()
+            ->route('checkouts.index')
+            ->with('success', 'Check-out marked complete.');
     }
 
     public function destroy(Checkout $checkout): RedirectResponse

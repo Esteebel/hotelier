@@ -42,54 +42,63 @@ const metricCards = [
         label: "Occupancy Rate",
         icon: "chart",
         format: (v) => `${v ?? 0}%`,
+        href: route("rooms.index"),
     },
     {
         key: "revenue_paid",
         label: "Revenue (Paid)",
         icon: "card",
         format: (v) => Number(v ?? 0).toLocaleString(),
+        href: route("payments.index", { status: "completed" }),
     },
     {
         key: "revenue_pending",
         label: "Revenue (Pending)",
-        icon: "time",
+        icon: "banknote",
         format: (v) => Number(v ?? 0).toLocaleString(),
+        href: route("payments.index", { status: "pending" }),
     },
     {
         key: "reservations",
         label: "Reservations",
         icon: "calendar",
         format: (v) => v ?? 0,
+        href: route("reservations.index"),
     },
     {
         key: "checked_in",
         label: "Checked In",
         icon: "users",
         format: (v) => v ?? 0,
+        href: route("reservations.index", { status: "checked_in" }),
     },
     {
         key: "cancelled",
         label: "Cancelled",
         icon: "chart",
         format: (v) => v ?? 0,
+        href: route("reservations.index", { status: "cancelled" }),
     },
     {
         key: "total_rooms",
         label: "Total Rooms",
         icon: "bed",
         format: (v) => v ?? 0,
+        href: route("rooms.index"),
     },
     {
         key: "out_of_service",
         label: "Out of Service",
         icon: "layers",
         format: (v) => v ?? 0,
+        href: route("rooms.index", { status: "out_of_service" }),
     },
     {
         key: "invoices_outstanding",
         label: "Invoices Outstanding",
         icon: "receipt",
         format: (v) => Number(v ?? 0).toLocaleString(),
+        href: route("invoices.index"),
     },
 ];
 </script>
@@ -174,10 +183,11 @@ const metricCards = [
         </div>
 
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <div
+            <Link
                 v-for="card in metricCards"
                 :key="card.key"
-                class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+                :href="card.href"
+                class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow-md"
             >
                 <div class="flex items-center justify-between">
                     <p class="text-sm font-medium text-gray-500">
@@ -193,7 +203,10 @@ const metricCards = [
                 <p class="mt-3 text-2xl font-semibold text-gray-900">
                     {{ card.format(metrics[card.key]) }}
                 </p>
-            </div>
+                <p class="mt-1 text-xs font-medium text-indigo-500">
+                    View details
+                </p>
+            </Link>
         </div>
     </AuthenticatedLayout>
 </template>

@@ -19,7 +19,10 @@ class InvoiceRequest extends FormRequest
             'branch_id' => ['required', 'integer', 'exists:hotel_branches,id'],
             'reservation_id' => ['nullable', 'integer', 'exists:reservations,id'],
             'guest_id' => ['required', 'integer', 'exists:guests,id'],
-            'invoice_number' => ['required', 'string', 'max:30', Rule::unique('invoices')],
+            'invoice_number' => [
+                'required', 'string', 'max:30',
+                Rule::unique('invoices')->ignore($this->route('invoice')),
+            ],
             'issued_on' => ['required', 'date'],
             'due_on' => ['required', 'date', 'after_or_equal:issued_on'],
             'subtotal' => ['required', 'numeric', 'min:0', 'max:9999999999'],
@@ -40,6 +43,12 @@ class InvoiceRequest extends FormRequest
 
         if (! $this->has('branch_id')) {
             $merge['branch_id'] = ContextualBranch::id();
+        }
+
+        if (! $this->has('invoice_number')) {
+            $count = \App\Models\Invoice::withTrashed()->count() + 1;
+            $branchCode = ContextualBranch::current()?->code ?? 'HQ';
+            $merge['invoice_number'] = $branchCode.'-INV-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
         }
 
         if (! $this->has('amount_paid')) {

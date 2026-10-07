@@ -6,6 +6,7 @@ use App\Http\Requests\PaymentRequest;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Support\ContextualBranch;
+use App\Support\GuestNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -84,7 +85,17 @@ class PaymentController extends Controller
         $data = $request->validated();
         $data['received_by'] = $request->user()?->id;
 
-        Payment::create($data);
+        $payment = Payment::create($data);
+
+        if (($data['status'] ?? null) === 'completed') {
+            GuestNotifier::notify(
+                $payment->guest,
+                'Payment received',
+                'We received your payment of ₦'.number_format((float) $payment->amount, 2)
+                    .' (ref '.$payment->payment_number.'). Thank you.',
+                'success',
+            );
+        }
 
         return redirect()
             ->route('payments.index')

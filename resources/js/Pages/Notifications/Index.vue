@@ -3,6 +3,7 @@ import { ref } from "vue";
 import AppIcon from "@/Components/AppIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Link, router } from "@inertiajs/vue3";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     notifications: Object,
@@ -12,6 +13,7 @@ const props = defineProps({
 
 const search = ref(props.filters?.search ?? "");
 const statusFilter = ref(props.filters?.status ?? "");
+const { hasPermission } = usePermissions();
 
 const statusStyles = {
     unread: "bg-blue-100 text-blue-800",
@@ -56,6 +58,7 @@ function applyFilters() {
                         </select>
                     </div>
                     <Link
+                        v-if="hasPermission('manage-notifications')"
                         :href="route('notifications.create')"
                         class="bg-indigo-600 text-white hover:bg-indigo-700 inline-flex items-center rounded-md px-4 py-2 text-sm font-semibold"
                     >
@@ -128,6 +131,40 @@ function applyFilters() {
                                         class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium"
                                     >
                                         <Link
+                                            v-if="n.status === 'unread'"
+                                            :href="
+                                                route(
+                                                    'notifications.complete',
+                                                    n.id,
+                                                )
+                                            "
+                                            method="post"
+                                            as="button"
+                                            class="mr-3 text-emerald-600 hover:text-emerald-900"
+                                            preserve-scroll
+                                            >Mark Read</Link
+                                        >
+                                        <Link
+                                            v-if="
+                                                hasPermission(
+                                                    'manage-notifications',
+                                                )
+                                            "
+                                            :href="
+                                                route(
+                                                    'notifications.edit',
+                                                    n.id,
+                                                )
+                                            "
+                                            class="mr-3 text-indigo-600 hover:text-indigo-900"
+                                            >Edit</Link
+                                        >
+                                        <Link
+                                            v-if="
+                                                hasPermission(
+                                                    'manage-notifications',
+                                                )
+                                            "
                                             :href="
                                                 route(
                                                     'notifications.destroy',

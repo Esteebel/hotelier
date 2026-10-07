@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Models\Guest;
 use App\Models\HotelBranch;
 use App\Models\User;
+use App\Support\ContextualOrganization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,9 +21,15 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
+        $activeOrganizationId = ContextualOrganization::id();
+
         $users = User::query()
             ->with('branches:id,name')
             ->withCount('branches')
+            ->when(
+                $activeOrganizationId !== null,
+                fn ($query) => $query->where('organization_id', $activeOrganizationId),
+            )
             ->when(
                 $request->filled('search'),
                 fn ($query) => $query->where(
@@ -61,19 +69,34 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
 
+        $actor = $request->user();
+
         $user = User::create([
             'name' => $request->string('name')->toString(),
             'email' => $request->string('email')->toString(),
             'password' => $request->string('password')->toString(),
             'status' => $request->string('status')->toString(),
+            'user_type' => $request->input('user_type', 'staff'),
+            'guest_id' => $request->input('guest_id'),
+            'organization_id' => $actor?->isOrgScoped()
+                ? $actor->organization_id
+                : $request->input('organization_id'),
         ]);
 
-        $user->syncRoles($request->input('roles', []));
+        $user->syncRoles($this->effectiveRoles($request));
         $user->branches()->sync($request->input('branches', []));
+
+        $defaultPassword = (string) config('app.default_user_password');
+        $usedDefault = $request->string('password')->toString() === $defaultPassword;
 
         return redirect()
             ->route('users.index')
-            ->with('success', 'User created successfully.');
+            ->with(
+                'success',
+                $usedDefault
+                    ? "User created successfully. They can sign in now with the default password: {$defaultPassword}. Ask them to change it after signing in."
+                    : 'User created successfully.',
+            );
     }
 
     public function edit(User $user): Response
@@ -94,10 +117,17 @@ class UserController extends Controller
             abort(403);
         }
 
+        $actor = $request->user();
+
         $user->update([
             'name' => $request->string('name')->toString(),
             'email' => $request->string('email')->toString(),
             'status' => $request->string('status')->toString(),
+            'user_type' => $request->input('user_type', $user->user_type->value),
+            'guest_id' => $request->input('guest_id'),
+            'organization_id' => $actor?->isOrgScoped()
+                ? $actor->organization_id
+                : $request->input('organization_id', $user->organization_id),
         ]);
 
         if ($request->filled('password')) {
@@ -106,7 +136,7 @@ class UserController extends Controller
             ]);
         }
 
-        $user->syncRoles($request->input('roles', []));
+        $user->syncRoles($this->effectiveRoles($request));
         $user->branches()->sync($request->input('branches', []));
 
         return redirect()
@@ -129,10 +159,42 @@ class UserController extends Controller
             ->with('success', 'User removed successfully.');
     }
 
+    /**
+     * @return array<int, mixed>
+     */
+    private function effectiveRoles(Request $request): array
+    {
+        $roles = array_values($request->input('roles', []));
+
+        if ($request->input('user_type', 'staff') === 'customer' && ! in_array('customer', $roles, true)) {
+            $roles[] = 'customer';
+        }
+
+        // Organization-scoped admins may never grant platform-level roles.
+        if ($request->user()?->isOrgScoped()) {
+            $roles = array_values(array_filter($roles, fn (string $role) => $role !== 'super-admin'));
+        }
+
+        return $roles;
+    }
+
+    private static function guestLabel(Guest $guest): string
+    {
+        $name = trim($guest->first_name.' '.$guest->last_name);
+
+        return $guest->email ? $name.' — '.$guest->email : $name;
+    }
+
     private function formData(): array
     {
+        $actor = request()->user();
+
         return [
             'roles' => Role::query()
+                ->when(
+                    $actor?->isOrgScoped(),
+                    fn ($query) => $query->where('name', '!=', 'super-admin'),
+                )
                 ->orderBy('name')
                 ->get()
                 ->map(fn (Role $role) => [
@@ -146,9 +208,29 @@ class UserController extends Controller
                 ->get(['id', 'name'])
                 ->map(fn (HotelBranch $branch) => ['id' => $branch->id, 'name' => $branch->name])
                 ->all(),
+            'organizations' => \App\Models\HotelOrganization::query()
+                ->orderBy('name')
+                ->get(['id', 'name', 'code'])
+                ->map(fn (\App\Models\HotelOrganization $organization) => [
+                    'id' => $organization->id,
+                    'name' => $organization->name,
+                ])
+                ->all(),
+            'canChooseOrganization' => ! $actor?->isOrgScoped(),
             'permissions' => Permission::query()
                 ->orderBy('name')
                 ->pluck('name')
+                ->all(),
+            'userTypes' => \App\Enums\UserType::labels(),
+            'defaultPassword' => (string) config('app.default_user_password'),
+            'guests' => Guest::query()
+                ->orderBy('first_name')
+                ->orderBy('last_name')
+                ->get(['id', 'first_name', 'last_name', 'email'])
+                ->map(fn (Guest $guest) => [
+                    'id' => $guest->id,
+                    'label' => self::guestLabel($guest),
+                ])
                 ->all(),
         ];
     }
@@ -174,6 +256,16 @@ class UserController extends Controller
             'email' => $user->email,
             'status' => $user->status->value,
             'status_label' => $user->status_label,
+            'user_type' => $user->user_type->value,
+            'user_type_label' => $user->type_label,
+            'guest_id' => $user->guest_id,
+            'organization_id' => $user->organization_id,
+            'guest' => $user->guest
+                ? [
+                    'id' => $user->guest->id,
+                    'label' => self::guestLabel($user->guest),
+                ]
+                : null,
             'created_at' => $user->created_at?->toDateTimeString(),
             'roles' => $user->getRoleNames()->sort()->values()->all(),
             'branches' => $user->branches->map(fn (HotelBranch $branch) => [

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+
+use App\Models\Concerns\HasOrganizationScope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 class AuditLog extends Model
 {
     use HasFactory;
+    use HasOrganizationScope;
 
     protected $fillable = [
         'branch_id',

@@ -20,7 +20,7 @@ class RoomController extends Controller
         $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
 
         $rooms = Room::query()
-            ->with('roomType:id,name')
+            ->with('roomType:id,name,base_price')
             ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
             ->when(
                 $request->filled('status'),

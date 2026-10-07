@@ -9,6 +9,7 @@ import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import SelectInput from "@/Components/SelectInput.vue";
 import TextInput from "@/Components/TextInput.vue";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     branches: {
@@ -30,6 +31,7 @@ const status = ref(props.filters.status ?? "");
 const organizationId = ref(props.filters.organization_id ?? "");
 const branchToDelete = ref(null);
 const deleting = useForm({});
+const { hasPermission } = usePermissions();
 
 const reload = (preserveKey = false) => {
     router.get(
@@ -98,6 +100,7 @@ const starLabel = (count) => (count === 1 ? "1 star" : `${count} stars`);
                     </p>
                 </div>
                 <Link
+                    v-if="hasPermission('manage-branches')"
                     :href="route('branches.create')"
                     class="inline-flex shrink-0 items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
                 >
@@ -249,6 +252,7 @@ const starLabel = (count) => (count === 1 ? "1 star" : `${count} stars`);
                                     class="flex items-center justify-end gap-2"
                                 >
                                     <Link
+                                        v-if="hasPermission('manage-branches')"
                                         :href="
                                             route('branches.edit', branch.id)
                                         "
@@ -261,6 +265,7 @@ const starLabel = (count) => (count === 1 ? "1 star" : `${count} stars`);
                                         />
                                     </Link>
                                     <button
+                                        v-if="hasPermission('manage-branches')"
                                         type="button"
                                         class="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
                                         title="Delete"

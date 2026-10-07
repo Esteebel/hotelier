@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Room;
 use App\Support\ContextualBranch;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,6 +12,22 @@ class RoomRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('branch_id')) {
+            return;
+        }
+
+        $room = $this->route('room');
+        $branchId = $room instanceof Room
+            ? $room->branch_id
+            : ContextualBranch::id();
+
+        if ($branchId !== null) {
+            $this->merge(['branch_id' => $branchId]);
+        }
     }
 
     public function rules(): array

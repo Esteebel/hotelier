@@ -2,8 +2,11 @@
 
 namespace App\Http\Middleware;
 
-use App\Support\ContextualBranch;
 use App\Models\HotelBranch;
+use App\Models\HotelOrganization;
+use App\Models\Notification;
+use App\Support\ContextualBranch;
+use App\Support\ContextualOrganization;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -39,9 +42,10 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 'roles' => $user?->roles->pluck('name'),
                 'permissions' => $user?->getAllPermissions()->pluck('name'),
+                'isCustomer' => $user?->isCustomer() ?? false,
             ],
             'branches' => $user
-                ? $user->branches()
+                ? ContextualBranch::visibleBranches($user)
                     ->select('hotel_branches.*')
                     ->orderBy('is_default', 'desc')
                     ->orderBy('name')
@@ -56,9 +60,46 @@ class HandleInertiaRequests extends Middleware
                     ])
                 : [],
             'activeBranch' => $user ? ContextualBranch::resolve()?->only(['id', 'name', 'code', 'city', 'state']) : null,
+            'canFilterOrganizations' => $user !== null
+                && ! $user->isCustomer()
+                && ! $user->isOrgScoped(),
+            'activeOrganizationId' => $user ? ContextualOrganization::id() : null,
+            'navOrganizations' => $user && ! $user->isCustomer()
+                ? ($user->isOrgScoped()
+                        ? HotelOrganization::query()->whereKey($user->organization_id)
+                        : HotelOrganization::query()->withoutGlobalScope('organization'))
+                    ->orderBy('name')
+                    ->get()
+                    ->map(fn (HotelOrganization $organization) => [
+                        'id' => $organization->id,
+                        'name' => $organization->name,
+                        'code' => $organization->code,
+                    ])
+                : [],
             'flash' => [
                 'success' => $request->session()->get('success'),
             ],
+            'portalNotifications' => $user && $user->isCustomer()
+                ? Notification::query()
+                    ->where('user_id', $user->id)
+                    ->latest()
+                    ->limit(10)
+                    ->get()
+                    ->map(fn (Notification $notification) => [
+                        'id' => $notification->id,
+                        'title' => $notification->title,
+                        'message' => $notification->message,
+                        'type' => $notification->type,
+                        'status' => $notification->status,
+                        'created_at' => $notification->created_at->toDateTimeString(),
+                    ])
+                : null,
+            'portalNotificationsUnread' => $user && $user->isCustomer()
+                ? Notification::query()
+                    ->where('user_id', $user->id)
+                    ->where('status', 'unread')
+                    ->count()
+                : 0,
         ];
     }
 }

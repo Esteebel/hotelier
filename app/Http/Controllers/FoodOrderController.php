@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\FoodOrderRequest;
 use App\Models\FoodOrder;
+use App\Models\MenuItem;
 use App\Models\Room;
 use App\Models\Guest;
 use App\Support\ContextualBranch;
@@ -50,10 +51,12 @@ class FoodOrderController extends Controller
         $branchId = ContextualBranch::id();
         $rooms = Room::query()->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->orderBy('room_number')->get(['id', 'room_number']);
         $guests = Guest::query()->where('status', 'active')->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
+        $menuItems = MenuItem::query()->forBranch($branchId)->available()->orderBy('sort_order')->orderBy('name')->get();
 
         return Inertia::render('Restaurant/Create', [
             'rooms' => $rooms,
             'guests' => $guests,
+            'menuItems' => $menuItems,
             'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
@@ -63,6 +66,13 @@ class FoodOrderController extends Controller
         $this->authorize('create', FoodOrder::class);
 
         $data = $request->validated();
+        $composed = MenuItem::composeOrder($data['items']);
+        if (! $composed['items']) {
+            return back()->withErrors(['items' => 'Please select at least one available menu item.'])->withInput();
+        }
+
+        $data['items'] = $composed['items'];
+        $data['total_amount'] = $composed['total_amount'];
         $data['order_number'] = FoodOrder::nextOrderNumber();
         $data['branch_id'] = ContextualBranch::id();
         $data['created_by'] = $request->user()->id;
@@ -80,11 +90,13 @@ class FoodOrderController extends Controller
         $branchId = ContextualBranch::id();
         $rooms = Room::query()->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->orderBy('room_number')->get(['id', 'room_number']);
         $guests = Guest::query()->where('status', 'active')->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
+        $menuItems = MenuItem::query()->forBranch($branchId)->available()->orderBy('sort_order')->orderBy('name')->get();
 
         return Inertia::render('Restaurant/Edit', [
             'order' => $foodOrder,
             'rooms' => $rooms,
             'guests' => $guests,
+            'menuItems' => $menuItems,
             'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
@@ -93,7 +105,16 @@ class FoodOrderController extends Controller
     {
         $this->authorize('update', $foodOrder);
 
-        $foodOrder->update($request->validated());
+        $data = $request->validated();
+        $composed = MenuItem::composeOrder($data['items'], $foodOrder->branch_id);
+        if (! $composed['items']) {
+            return back()->withErrors(['items' => 'Please select at least one available menu item.'])->withInput();
+        }
+
+        $data['items'] = $composed['items'];
+        $data['total_amount'] = $composed['total_amount'];
+
+        $foodOrder->update($data);
 
         return redirect()->route('restaurant.index')->with('success', 'Food order updated.');
     }

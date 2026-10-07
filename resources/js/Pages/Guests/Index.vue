@@ -8,6 +8,7 @@ import Modal from "@/Components/Modal.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
+import { usePermissions } from "@/Composables/usePermissions";
 
 const props = defineProps({
     guests: { type: Object, required: true },
@@ -18,6 +19,7 @@ const props = defineProps({
 const search = ref(props.filters.search ?? "");
 const guestToDelete = ref(null);
 const deleting = useForm({});
+const { hasPermission } = usePermissions();
 
 const reload = (preserveKey = false) => {
     router.get(
@@ -86,6 +88,7 @@ const fullName = (guest) =>
                     </p>
                 </div>
                 <Link
+                    v-if="hasPermission('manage-guests')"
                     :href="route('guests.create')"
                     class="inline-flex shrink-0 items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500"
                 >
@@ -198,6 +201,7 @@ const fullName = (guest) =>
                             </td>
                             <td class="whitespace-nowrap px-5 py-4 text-right">
                                 <div
+                                    v-if="hasPermission('manage-guests')"
                                     class="flex items-center justify-end gap-2"
                                 >
                                     <Link

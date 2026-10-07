@@ -92,15 +92,54 @@ class HotelOrganizationController extends Controller
             ->with('success', 'Hotel organization updated successfully.');
     }
 
-    public function destroy(HotelOrganization $organization): RedirectResponse
+    public function destroy(Request $request, HotelOrganization $organization): RedirectResponse
     {
         $this->authorize('delete', $organization);
+
+        if ((int) $request->session()->get('active_organization_id') === $organization->id) {
+            $request->session()->forget('active_organization_id');
+        }
 
         $organization->delete();
 
         return redirect()
             ->route('organizations.index')
             ->with('success', 'Hotel organization deleted successfully.');
+    }
+
+    /**
+     * Navbar organization switcher: narrows the whole admin panel to one
+     * organization, or back to "All organizations" when null is given.
+     */
+    public function switch(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($user !== null && ! $user->isCustomer() && ! $user->isOrgScoped(), 403);
+
+        $data = $request->validate([
+            'organization' => ['nullable', 'integer', 'exists:hotel_organizations,id'],
+        ]);
+
+        $organizationId = $data['organization'] ?? null;
+        $message = 'Showing all organizations.';
+
+        if ($organizationId !== null) {
+            $name = HotelOrganization::query()
+                ->withoutGlobalScope('organization')
+                ->whereKey($organizationId)
+                ->value('name');
+
+            $request->session()->put('active_organization_id', (int) $organizationId);
+            $message = 'Now showing '.$name.' only.';
+        } else {
+            $request->session()->forget('active_organization_id');
+        }
+
+        // Branch selections from another organization must not survive.
+        $request->session()->forget('active_branch_id');
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**

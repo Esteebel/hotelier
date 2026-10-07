@@ -15,21 +15,26 @@ class HotelOrganizationPolicy
 
     public function view(User $user, HotelOrganization $hotel): bool
     {
-        return $this->viewAny($user);
+        return $this->viewAny($user)
+            && (! $user->isOrgScoped() || $user->organization_id === $hotel->id);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageHotels->value);
+        // Creating new organizations is a platform-level action for super admins only.
+        return $user->hasRole('super-admin')
+            && $user->hasPermissionTo(PermissionName::ManageHotels->value);
     }
 
     public function update(User $user, HotelOrganization $hotel): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageHotels->value);
+        return $user->hasPermissionTo(PermissionName::ManageHotels->value)
+            && (! $user->isOrgScoped() || $user->organization_id === $hotel->id);
     }
 
     public function delete(User $user, HotelOrganization $hotel): bool
     {
-        return $user->hasPermissionTo(PermissionName::ManageHotels->value);
+        return $user->hasRole('super-admin')
+            && $user->hasPermissionTo(PermissionName::ManageHotels->value);
     }
 }
