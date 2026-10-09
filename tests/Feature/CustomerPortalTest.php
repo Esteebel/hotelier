@@ -507,4 +507,98 @@ class CustomerPortalTest extends TestCase
             ->get(route('portal.rooms'))
             ->assertRedirect(route('dashboard'));
     }
+
+    public function test_customer_can_cancel_their_own_confirmed_reservation(): void
+    {
+        $room = $this->makeRoom(['status' => 'reserved']);
+        $reservation = $this->makeReservation($this->guest, [
+            'room_id' => $room->id,
+        ]);
+
+        $this->actingAs($this->customer)
+            ->post(route('portal.reservations.cancel', $reservation->id))
+            ->assertRedirect(route('portal.reservations'));
+
+        $this->assertSame('cancelled', $reservation->fresh()->status->value);
+        $this->assertSame('available', $room->fresh()->status->value);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->customer->id,
+            'title' => 'Reservation cancelled',
+        ]);
+    }
+
+    public function test_customer_cannot_cancel_another_guests_reservation(): void
+    {
+        $reservation = $this->makeReservation($this->otherGuest);
+
+        $this->actingAs($this->customer)
+            ->post(route('portal.reservations.cancel', $reservation->id))
+            ->assertNotFound();
+
+        $this->assertSame('confirmed', $reservation->fresh()->status->value);
+    }
+
+    public function test_checked_in_reservation_cannot_be_cancelled_online(): void
+    {
+        $reservation = $this->makeReservation($this->guest, [
+            'status' => 'checked_in',
+        ]);
+
+        $this->actingAs($this->customer)
+            ->post(route('portal.reservations.cancel', $reservation->id))
+            ->assertSessionHasErrors('reservation');
+
+        $this->assertSame('checked_in', $reservation->fresh()->status->value);
+    }
+
+    public function test_customer_without_a_guest_profile_cannot_cancel_reservations(): void
+    {
+        $reservation = $this->makeReservation($this->guest);
+        $user = User::factory()->create(['user_type' => 'customer', 'guest_id' => null]);
+        $user->assignRole('customer');
+
+        $this->actingAs($user)
+            ->post(route('portal.reservations.cancel', $reservation->id))
+            ->assertNotFound();
+
+        $this->assertSame('confirmed', $reservation->fresh()->status->value);
+    }
+
+    public function test_staff_cannot_access_portal_cancel_route(): void
+    {
+        $staff = User::factory()->create();
+        $reservation = $this->makeReservation($this->guest);
+
+        $this->actingAs($staff)
+            ->post(route('portal.reservations.cancel', $reservation->id))
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertSame('confirmed', $reservation->fresh()->status->value);
+    }
+
+    public function test_order_cannot_target_a_room_the_guest_has_not_booked(): void
+    {
+        $item = $this->makeMenuItem();
+        $room = $this->makeRoom();
+
+        $this->actingAs($this->customer)->post(route('portal.menu.orders.store'), [
+            'order_type' => 'dine_in',
+            'room_id' => $room->id,
+            'items' => [['menu_item_id' => $item->id, 'quantity' => 1]],
+        ])->assertSessionHasErrors('room_id');
+
+        $this->assertSame(0, FoodOrder::count());
+
+        $this->makeReservation($this->guest, ['room_id' => $room->id]);
+
+        $this->actingAs($this->customer)->post(route('portal.menu.orders.store'), [
+            'order_type' => 'dine_in',
+            'room_id' => $room->id,
+            'items' => [['menu_item_id' => $item->id, 'quantity' => 1]],
+        ])->assertRedirect(route('portal.orders'));
+
+        $this->assertSame(1, FoodOrder::count());
+        $this->assertSame($room->id, FoodOrder::firstOrFail()->room_id);
+    }
 }

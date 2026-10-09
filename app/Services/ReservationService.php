@@ -102,10 +102,9 @@ class ReservationService
         DB::transaction(function () use ($reservation) {
             $reservation->update(['status' => ReservationStatus::Cancelled->value]);
 
-            // Release room back to available
-            Room::where('id', $reservation->room_id)
-                ->update(['status' => RoomStatus::Available->value]);
-
+            // Release a reserved room back to available (never clobbers
+            // occupied/maintenance states — HandleReservationCancellation
+            // only flips rooms that are still marked reserved).
             ReservationCancelled::dispatch($reservation, $reservation->branch_id);
         });
     }

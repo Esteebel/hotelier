@@ -10,6 +10,7 @@ use App\Models\Notification;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
+use App\Services\ReservationService;
 use App\Support\ContextualBranch;
 use App\Support\GuestNotifier;
 use Illuminate\Http\RedirectResponse;
@@ -103,6 +104,12 @@ class PortalController extends Controller
 
         $user = $request->user();
         $branchId = $user->guest?->branch_id ?? ContextualBranch::id();
+
+        if (! empty($data['room_id']) && ! $this->roomBelongsToGuest($user, (int) $data['room_id'])) {
+            return back()->withErrors([
+                'room_id' => 'You can only send orders to a room linked to your reservation.',
+            ])->withInput();
+        }
 
         $composed = MenuItem::composeOrder($data['items'], $branchId);
         if (! $composed['items']) {
@@ -291,6 +298,34 @@ class PortalController extends Controller
             ->with('success', 'Your reservation has been booked. We look forward to hosting you.');
     }
 
+    public function cancelReservation(Request $request, string $reservation): RedirectResponse
+    {
+        $guest = $request->user()->guest;
+
+        $model = Reservation::withoutGlobalScope('branch')->find($reservation);
+
+        abort_unless($guest && $model && (int) $model->guest_id === (int) $guest->id, 404);
+
+        if ($model->status?->value !== 'confirmed') {
+            return back()->withErrors([
+                'reservation' => 'Only confirmed reservations can be cancelled online. Please contact reception for help with your stay.',
+            ]);
+        }
+
+        app(ReservationService::class)->cancel($model);
+
+        GuestNotifier::notify(
+            $guest,
+            'Reservation cancelled',
+            'Your reservation '.$model->reservation_number.' has been cancelled. We hope to host you again soon.',
+            'info',
+        );
+
+        return redirect()
+            ->route('portal.reservations')
+            ->with('success', 'Your reservation has been cancelled.');
+    }
+
     public function reservations(Request $request): Response
     {
         $guest = $request->user()->guest;
@@ -375,6 +410,23 @@ class PortalController extends Controller
             ->update(['status' => 'read']);
 
         return back();
+    }
+
+    private function roomBelongsToGuest(\App\Models\User $user, int $roomId): bool
+    {
+        if (! $user->guest_id) {
+            return false;
+        }
+
+        return Room::query()
+            ->withoutGlobalScope('branch')
+            ->where('id', $roomId)
+            ->whereHas('reservations', function ($query) use ($user) {
+                $query->withoutGlobalScope('branch')
+                    ->where('guest_id', $user->guest_id)
+                    ->whereIn('status', ['confirmed', 'checked_in']);
+            })
+            ->exists();
     }
 
     private function ordersQuery(\App\Models\User $user)

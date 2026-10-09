@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link } from "@inertiajs/vue3";
+import { Head, Link, router } from "@inertiajs/vue3";
 import AppIcon from "@/Components/AppIcon.vue";
 import CustomerLayout from "@/Layouts/CustomerLayout.vue";
 
@@ -17,6 +17,22 @@ const statusStyles = {
 };
 
 const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
+
+const cancelReservation = (reservation) => {
+    if (
+        !window.confirm(
+            `Cancel reservation ${reservation.reservation_number}? This cannot be undone.`,
+        )
+    ) {
+        return;
+    }
+
+    router.post(
+        route("portal.reservations.cancel", reservation.id),
+        {},
+        { preserveScroll: true },
+    );
+};
 </script>
 
 <template>
@@ -47,6 +63,13 @@ const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
                 class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
             >
                 {{ $page.props.flash.success }}
+            </div>
+
+            <div
+                v-if="$page.props.errors?.reservation"
+                class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+            >
+                {{ $page.props.errors.reservation }}
             </div>
 
             <div
@@ -96,6 +119,11 @@ const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
                             >
                                 Status
                             </th>
+                            <th
+                                class="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500"
+                            >
+                                Actions
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
@@ -135,11 +163,68 @@ const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
                                     {{ reservation.status_label }}
                                 </span>
                             </td>
+                            <td
+                                class="whitespace-nowrap px-5 py-4 text-right text-sm"
+                            >
+                                <button
+                                    v-if="reservation.status === 'confirmed'"
+                                    type="button"
+                                    class="rounded-md px-2.5 py-1 text-sm font-medium text-rose-600 hover:bg-rose-50"
+                                    @click="cancelReservation(reservation)"
+                                >
+                                    Cancel
+                                </button>
+                                <span v-else class="text-gray-300">—</span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
 
-                <div v-else class="px-6 py-12 text-center">
+                <div
+                    v-if="reservations.total > reservations.per_page"
+                    class="flex items-center justify-between gap-3 border-t border-gray-100 px-5 py-3"
+                >
+                    <p class="text-xs text-gray-500">
+                        Showing
+                        <span class="font-medium">{{ reservations.from }}</span>
+                        to
+                        <span class="font-medium">{{ reservations.to }}</span>
+                        of
+                        <span class="font-medium">{{
+                            reservations.total
+                        }}</span>
+                        reservations
+                    </p>
+                    <nav class="flex items-center gap-1">
+                        <template
+                            v-for="link in reservations.links"
+                            :key="link.label"
+                        >
+                            <Link
+                                v-if="link.url"
+                                :href="link.url"
+                                preserve-scroll
+                                class="rounded-md px-2.5 py-1 text-sm"
+                                :class="
+                                    link.active
+                                        ? 'bg-indigo-600 font-medium text-white'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                "
+                                v-html="link.label"
+                            />
+                            <span
+                                v-else
+                                class="px-2.5 py-1 text-sm text-gray-400"
+                                v-html="link.label"
+                            ></span>
+                        </template>
+                    </nav>
+                </div>
+
+                <div
+                    v-if="!reservations.data.length"
+                    class="px-6 py-12 text-center"
+                >
                     <p class="text-sm font-medium text-gray-900">
                         No reservations yet
                     </p>

@@ -1,5 +1,5 @@
 <script setup>
-import { Head } from "@inertiajs/vue3";
+import { Head, Link } from "@inertiajs/vue3";
 import AppIcon from "@/Components/AppIcon.vue";
 import CustomerLayout from "@/Layouts/CustomerLayout.vue";
 
@@ -91,7 +91,44 @@ const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
                     </li>
                 </ul>
 
-                <div v-else class="px-6 py-14 text-center">
+                <div
+                    v-if="orders.total > orders.per_page"
+                    class="flex items-center justify-between gap-3 border-t border-gray-100 px-5 py-3"
+                >
+                    <p class="text-xs text-gray-500">
+                        Showing
+                        <span class="font-medium">{{ orders.from }}</span> to
+                        <span class="font-medium">{{ orders.to }}</span> of
+                        <span class="font-medium">{{ orders.total }}</span>
+                        orders
+                    </p>
+                    <nav class="flex items-center gap-1">
+                        <template
+                            v-for="link in orders.links"
+                            :key="link.label"
+                        >
+                            <Link
+                                v-if="link.url"
+                                :href="link.url"
+                                preserve-scroll
+                                class="rounded-md px-2.5 py-1 text-sm"
+                                :class="
+                                    link.active
+                                        ? 'bg-indigo-600 font-medium text-white'
+                                        : 'text-gray-600 hover:bg-gray-100'
+                                "
+                                v-html="link.label"
+                            />
+                            <span
+                                v-else
+                                class="px-2.5 py-1 text-sm text-gray-400"
+                                v-html="link.label"
+                            ></span>
+                        </template>
+                    </nav>
+                </div>
+
+                <div v-if="!orders.data.length" class="px-6 py-14 text-center">
                     <AppIcon
                         name="inbox"
                         classes="[&>svg]:h-10 [&>svg]:w-10 mx-auto text-gray-300"

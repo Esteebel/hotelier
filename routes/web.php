@@ -313,6 +313,7 @@ Route::middleware(['auth', 'customer.area'])->prefix('portal')->name('portal.')-
     Route::get('/rooms', [PortalController::class, 'rooms'])->name('rooms');
     Route::get('/reservations', [PortalController::class, 'reservations'])->name('reservations');
     Route::post('/reservations', [PortalController::class, 'storeReservation'])->name('reservations.store');
+    Route::post('/reservations/{reservation}/cancel', [PortalController::class, 'cancelReservation'])->name('reservations.cancel');
     Route::get('/bills', [PortalController::class, 'bills'])->name('bills');
     Route::get('/profile', [PortalController::class, 'profile'])->name('profile');
     Route::post('/notifications/{notification}/read', [PortalController::class, 'readNotification'])->name('notifications.read');

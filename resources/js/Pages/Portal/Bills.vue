@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from "vue";
-import { Head } from "@inertiajs/vue3";
+import { Head, Link } from "@inertiajs/vue3";
 import CustomerLayout from "@/Layouts/CustomerLayout.vue";
 
 const props = defineProps({
@@ -157,7 +157,50 @@ const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
                             </tr>
                         </tbody>
                     </table>
-                    <div v-else class="px-6 py-12 text-center">
+                    <div
+                        v-if="invoices.total > invoices.per_page"
+                        class="flex items-center justify-between gap-3 border-t border-gray-100 px-5 py-3"
+                    >
+                        <p class="text-xs text-gray-500">
+                            Showing
+                            <span class="font-medium">{{ invoices.from }}</span>
+                            to
+                            <span class="font-medium">{{ invoices.to }}</span>
+                            of
+                            <span class="font-medium">{{
+                                invoices.total
+                            }}</span>
+                            invoices
+                        </p>
+                        <nav class="flex items-center gap-1">
+                            <template
+                                v-for="link in invoices.links"
+                                :key="link.label"
+                            >
+                                <Link
+                                    v-if="link.url"
+                                    :href="link.url"
+                                    preserve-scroll
+                                    class="rounded-md px-2.5 py-1 text-sm"
+                                    :class="
+                                        link.active
+                                            ? 'bg-indigo-600 font-medium text-white'
+                                            : 'text-gray-600 hover:bg-gray-100'
+                                    "
+                                    v-html="link.label"
+                                />
+                                <span
+                                    v-else
+                                    class="px-2.5 py-1 text-sm text-gray-400"
+                                    v-html="link.label"
+                                ></span>
+                            </template>
+                        </nav>
+                    </div>
+                    <div
+                        v-if="!invoices.data.length"
+                        class="px-6 py-12 text-center"
+                    >
                         <p class="text-sm font-medium text-gray-900">
                             No invoices yet
                         </p>
@@ -234,7 +277,50 @@ const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
                             </tr>
                         </tbody>
                     </table>
-                    <div v-else class="px-6 py-12 text-center">
+                    <div
+                        v-if="payments.total > payments.per_page"
+                        class="flex items-center justify-between gap-3 border-t border-gray-100 px-5 py-3"
+                    >
+                        <p class="text-xs text-gray-500">
+                            Showing
+                            <span class="font-medium">{{ payments.from }}</span>
+                            to
+                            <span class="font-medium">{{ payments.to }}</span>
+                            of
+                            <span class="font-medium">{{
+                                payments.total
+                            }}</span>
+                            payments
+                        </p>
+                        <nav class="flex items-center gap-1">
+                            <template
+                                v-for="link in payments.links"
+                                :key="link.label"
+                            >
+                                <Link
+                                    v-if="link.url"
+                                    :href="link.url"
+                                    preserve-scroll
+                                    class="rounded-md px-2.5 py-1 text-sm"
+                                    :class="
+                                        link.active
+                                            ? 'bg-indigo-600 font-medium text-white'
+                                            : 'text-gray-600 hover:bg-gray-100'
+                                    "
+                                    v-html="link.label"
+                                />
+                                <span
+                                    v-else
+                                    class="px-2.5 py-1 text-sm text-gray-400"
+                                    v-html="link.label"
+                                ></span>
+                            </template>
+                        </nav>
+                    </div>
+                    <div
+                        v-if="!payments.data.length"
+                        class="px-6 py-12 text-center"
+                    >
                         <p class="text-sm font-medium text-gray-900">
                             No payments yet
                         </p>
