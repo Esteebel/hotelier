@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ReservationCancelled;
+use App\Enums\RoomStatus;
 use App\Http\Requests\ReservationRequest;
 use App\Models\Guest;
 use App\Models\Reservation;
 use App\Models\Room;
+use App\Services\ReservationService;
 use App\Support\ContextualBranch;
 use App\Support\GuestNotifier;
 use Illuminate\Http\RedirectResponse;
@@ -82,10 +85,15 @@ class ReservationController extends Controller
 
         $data = $request->validated();
         $data['created_by'] = $request->user()?->id;
-        $data['special_requests'] = $data['special_requests'] ?? ($data['notes'] ?? null);
         unset($data['notes']);
 
-        $reservation = Reservation::create($data);
+        try {
+            $reservation = app(ReservationService::class)->create($data);
+        } catch (\RuntimeException $e) {
+            return back()
+                ->withInput()
+                ->withErrors(['room_id' => $e->getMessage()]);
+        }
 
         GuestNotifier::notify(
             $reservation->guest,
@@ -132,7 +140,16 @@ class ReservationController extends Controller
     {
         $this->authorize('update', $reservation);
 
-        $reservation->update($request->validated());
+        $data = $request->validated();
+        unset($data['notes']);
+
+        try {
+            app(ReservationService::class)->update($reservation, $data);
+        } catch (\RuntimeException $e) {
+            return back()
+                ->withInput()
+                ->withErrors(['room_id' => $e->getMessage()]);
+        }
 
         return redirect()
             ->route('reservations.index')
@@ -144,6 +161,10 @@ class ReservationController extends Controller
         $this->authorize('delete', $reservation);
 
         $reservation->delete();
+
+        // Releases the room hold (HandleReservationCancellation, guarded so a
+        // sibling reservation keeps its room).
+        ReservationCancelled::dispatch($reservation, $reservation->branch_id);
 
         return redirect()
             ->route('reservations.index')
@@ -164,6 +185,9 @@ class ReservationController extends Controller
     }
 
     /**
+     * Sellable rooms: active and not under maintenance/out of service.
+     * Date-overlap holds are enforced server-side by ReservationService.
+     *
      * @return array<int, array{id: int, room_number: string}>
      */
     private function roomOptions(): array
@@ -172,8 +196,11 @@ class ReservationController extends Controller
 
         return Room::query()
             ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->where('status', 'available')
             ->where('is_active', true)
+            ->whereNotIn('status', [
+                RoomStatus::Maintenance->value,
+                RoomStatus::OutOfService->value,
+            ])
             ->orderBy('room_number')
             ->get(['id', 'room_number'])
             ->map(fn (Room $room) => $room->only(['id', 'room_number']))

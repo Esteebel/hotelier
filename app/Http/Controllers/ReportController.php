@@ -128,7 +128,7 @@ class ReportController extends Controller
                     break;
 
                 case 'guests':
-                    fputcsv($handle, ['ID', 'Name', 'Email', 'Phone', 'Reservations']);
+                    fputcsv($handle, ['Guest #', 'Name', 'Email', 'Phone', 'Reservations']);
                     $branchScope(\App\Models\Guest::query())
                         ->withCount('reservations')
                         ->orderBy('created_at', 'desc')

@@ -12,14 +12,19 @@ class HandleCheckinRoomUpdate
     {
         $checkin = $event->checkin;
 
-        // Update room status to occupied
+        // Idempotent with CheckinController::store — updates are keyed by id
+        // and ignore the caller's branch context.
         if ($checkin->room_id) {
-            Room::where('id', $checkin->room_id)->update(['status' => 'occupied']);
+            Room::withoutGlobalScope('organization')
+                ->where('id', $checkin->room_id)
+                ->whereIn('status', ['available', 'reserved', 'dirty', 'cleaning'])
+                ->update(['status' => 'occupied']);
         }
 
-        // Update reservation status to checked_in
         if ($checkin->reservation_id) {
-            Reservation::where('id', $checkin->reservation_id)->update(['status' => 'checked_in']);
+            Reservation::withoutGlobalScope('branch')
+                ->where('id', $checkin->reservation_id)
+                ->update(['status' => 'checked_in']);
         }
     }
 }

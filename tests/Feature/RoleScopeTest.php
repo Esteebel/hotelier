@@ -38,6 +38,7 @@ class RoleScopeTest extends TestCase
         $this->organization = HotelOrganization::factory()->create();
         $this->branch = HotelBranch::factory()->create([
             'organization_id' => $this->organization->id,
+            'is_default' => true,
         ]);
 
         $this->superAdmin = User::factory()->create();

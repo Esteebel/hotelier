@@ -12,14 +12,19 @@ class HandleCheckoutRoomUpdate
     {
         $checkout = $event->checkout;
 
-        // Update room status to cleaning
+        // Idempotent with CheckoutController::store — a vacated room goes to
+        // dirty (awaiting housekeeping), never clobbered by other states.
         if ($checkout->room_id) {
-            Room::where('id', $checkout->room_id)->update(['status' => 'cleaning']);
+            Room::withoutGlobalScope('organization')
+                ->where('id', $checkout->room_id)
+                ->whereIn('status', ['occupied', 'reserved'])
+                ->update(['status' => 'dirty']);
         }
 
-        // Update reservation status to checked_out
         if ($checkout->reservation_id) {
-            Reservation::where('id', $checkout->reservation_id)->update(['status' => 'checked_out']);
+            Reservation::withoutGlobalScope('branch')
+                ->where('id', $checkout->reservation_id)
+                ->update(['status' => 'checked_out']);
         }
     }
 }

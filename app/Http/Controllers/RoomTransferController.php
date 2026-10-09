@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ReservationStatus;
 use App\Enums\RoomStatus;
 use App\Http\Requests\RoomTransferRequest;
 use App\Models\Reservation;
@@ -15,6 +16,11 @@ use Inertia\Response;
 
 class RoomTransferController extends Controller
 {
+    private const TRANSFERABLE_STATUSES = [
+        ReservationStatus::CheckedIn->value,
+        ReservationStatus::Extended->value,
+    ];
+
     public function index(): Response
     {
         $this->authorize('viewAny', RoomTransfer::class);
@@ -50,7 +56,7 @@ class RoomTransferController extends Controller
 
         $reservations = Reservation::query()
             ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->whereIn('status', ['checked-in', 'pending'])
+            ->whereIn('status', self::TRANSFERABLE_STATUSES)
             ->with('room:id,room_number')
             ->latest()
             ->limit(200)
@@ -91,13 +97,14 @@ class RoomTransferController extends Controller
         return Inertia::render('RoomTransfers/Edit', [
             'transfer' => $roomTransfer,
             'reservations' => Reservation::query()
-                ->whereIn('status', ['checked-in', 'pending'])
+                ->when($roomTransfer->branch_id, fn ($query) => $query->where('branch_id', $roomTransfer->branch_id))
+                ->whereIn('status', self::TRANSFERABLE_STATUSES)
                 ->with('room:id,room_number')
                 ->latest()
                 ->limit(200)
-                ->get(['id', 'reservation_number', 'guest_name', 'room_id', 'status']),
+                ->get(['id', 'reservation_number', 'guest_id', 'room_id', 'status']),
             'rooms' => Room::query()
-                ->forBranch($roomTransfer->branch_id)
+                ->where('branch_id', $roomTransfer->branch_id)
                 ->orderBy('room_number')
                 ->get(['id', 'room_number', 'branch_id']),
         ]);
@@ -107,7 +114,17 @@ class RoomTransferController extends Controller
     {
         $this->authorize('update', $roomTransfer);
 
-        $roomTransfer->update($request->validated());
+        $data = $request->validated();
+        $wantsComplete = ($data['status'] ?? null) === 'completed';
+        unset($data['status']);
+
+        $roomTransfer->update($data);
+
+        if ($wantsComplete) {
+            return $this->complete($roomTransfer);
+        }
+
+        $roomTransfer->update(['status' => $request->input('status')]);
 
         return redirect()
             ->route('room-transfers.index')
@@ -118,6 +135,29 @@ class RoomTransferController extends Controller
     {
         $this->authorize('update', $roomTransfer);
 
+        if ($roomTransfer->status === 'completed') {
+            return redirect()
+                ->route('room-transfers.index')
+                ->with('success', 'Room transfer already completed.');
+        }
+
+        $toRoom = $roomTransfer->to_room_id
+            ? Room::find($roomTransfer->to_room_id)
+            : null;
+
+        $blocked = [
+            RoomStatus::Occupied->value,
+            RoomStatus::Reserved->value,
+            RoomStatus::Maintenance->value,
+            RoomStatus::OutOfService->value,
+        ];
+
+        if ($roomTransfer->to_room_id && ($toRoom === null || in_array($toRoom->status->value, $blocked, true))) {
+            return redirect()
+                ->back()
+                ->withErrors(['to_room_id' => 'The destination room is not available for transfer.']);
+        }
+
         DB::transaction(function () use ($roomTransfer) {
             $roomTransfer->forceFill([
                 'status' => 'completed',
@@ -125,13 +165,23 @@ class RoomTransferController extends Controller
             ])->save();
 
             if ($roomTransfer->from_room_id) {
-                Room::where('id', $roomTransfer->from_room_id)
-                    ->update(['status' => RoomStatus::Dirty->value]);
+                $fromRoom = Room::find($roomTransfer->from_room_id);
+
+                if ($fromRoom && $fromRoom->status === RoomStatus::Occupied) {
+                    $fromRoom->update(['status' => RoomStatus::Dirty]);
+                }
             }
 
             if ($roomTransfer->to_room_id && $roomTransfer->reservation_id) {
-                $reservation = Reservation::find($roomTransfer->reservation_id);
-                if ($reservation && $reservation->status === 'checked_in') {
+                $reservation = Reservation::withoutGlobalScope('branch')
+                    ->where('id', $roomTransfer->reservation_id)
+                    ->where('branch_id', $roomTransfer->branch_id)
+                    ->first();
+
+                if (
+                    $reservation
+                    && in_array($reservation->status->value, self::TRANSFERABLE_STATUSES, true)
+                ) {
                     Room::where('id', $roomTransfer->to_room_id)
                         ->update(['status' => RoomStatus::Occupied->value]);
                     $reservation->update(['room_id' => $roomTransfer->to_room_id]);

@@ -148,9 +148,12 @@ class PortalNotificationsTest extends TestCase
 
     public function test_staff_creating_a_reservation_notifies_only_the_linked_customer(): void
     {
+        $room = $this->makeRoom();
+
         $this->actingAs($this->staff)
             ->post(route('reservations.store'), [
                 'branch_id' => $this->branch->id,
+                'room_id' => $room->id,
                 'guest_id' => $this->guest->id,
                 'check_in' => now()->addDays(2)->toDateString(),
                 'check_out' => now()->addDays(5)->toDateString(),
@@ -200,8 +203,11 @@ class PortalNotificationsTest extends TestCase
 
     public function test_checkout_notifies_the_linked_customer(): void
     {
-        $reservation = $this->makeReservation($this->guest);
-        $room = $this->makeRoom();
+        $room = $this->makeRoom(['status' => 'occupied']);
+        $reservation = $this->makeReservation($this->guest, [
+            'room_id' => $room->id,
+            'status' => 'checked_in',
+        ]);
 
         $this->actingAs($this->staff)
             ->post(route('checkouts.store'), [

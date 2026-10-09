@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RoomStatus;
+use App\Events\CheckinCompleted;
 use App\Http\Requests\CheckinRequest;
 use App\Models\Checkin;
 use App\Models\Guest;
@@ -74,7 +75,7 @@ class CheckinController extends Controller
 
         $rooms = Room::query()
             ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
-            ->where('status', RoomStatus::Reserved->value)
+            ->whereIn('id', $reservations->pluck('room_id')->filter()->unique())
             ->orderBy('room_number')
             ->get(['id', 'room_number', 'room_type_id']);
 
@@ -104,26 +105,33 @@ class CheckinController extends Controller
             $data['checked_in_at'] = now();
             $data['status'] = 'checked_in';
 
+            $reservation = Reservation::withoutGlobalScope('branch')
+                ->findOrFail($data['reservation_id']);
+
             $checkin = Checkin::create($data);
 
-            // Update reservation status
-            Reservation::where('id', $data['reservation_id'])
-                ->update(['status' => 'checked_in']);
+            // Reservation: checked in, and the room actually used is recorded
+            // (covers legacy reservations created without a room).
+            $reservation->update([
+                'status' => 'checked_in',
+                'room_id' => $data['room_id'],
+            ]);
 
-            // Update room status to occupied
-            Room::where('id', $data['room_id'])
+            // Room occupied — only from a non-blocked state.
+            Room::withoutGlobalScope('organization')
+                ->where('id', $data['room_id'])
+                ->whereIn('status', ['available', 'reserved', 'dirty', 'cleaning'])
                 ->update(['status' => RoomStatus::Occupied->value]);
-
-            $reservation = Reservation::find($data['reservation_id']);
 
             GuestNotifier::notify(
                 Guest::find($data['guest_id']),
                 'Checked in',
-                'You have been checked in'
-                    .($reservation ? ' against reservation '.$reservation->reservation_number : '')
+                'You have been checked in against reservation '.$reservation->reservation_number
                     .'. Enjoy your stay.',
                 'info',
             );
+
+            CheckinCompleted::dispatch($checkin, $data['branch_id']);
 
             DB::commit();
 

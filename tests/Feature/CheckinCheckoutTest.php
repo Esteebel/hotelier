@@ -1,0 +1,282 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\PermissionName;
+use App\Enums\RoomStatus;
+use App\Events\CheckinCompleted;
+use App\Events\CheckoutCompleted;
+use App\Models\Guest;
+use App\Models\HotelBranch;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Reservation;
+use App\Models\Room;
+use App\Models\User;
+use Database\Seeders\PermissionSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
+use Tests\TestCase;
+
+class CheckinCheckoutTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private HotelBranch $branch;
+
+    private User $user;
+
+    private Guest $guest;
+
+    private Room $room;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(PermissionSeeder::class);
+
+        $this->branch = HotelBranch::factory()->create([
+            'status' => 'active',
+            'is_default' => true,
+        ]);
+
+        $this->user = User::factory()->create();
+        $this->user->givePermissionTo([
+            PermissionName::ManageCheckins->value,
+            PermissionName::ManageCheckouts->value,
+        ]);
+
+        $this->guest = Guest::create([
+            'branch_id' => $this->branch->id,
+            'first_name' => 'Ada',
+            'last_name' => 'Lovelace',
+            'email' => 'ada@example.com',
+            'status' => 'active',
+        ]);
+
+        $this->room = Room::factory()->create([
+            'branch_id' => $this->branch->id,
+            'price' => 50000,
+            'capacity' => 4,
+            'status' => RoomStatus::Available,
+            'is_active' => true,
+        ]);
+    }
+
+    private function makeReservation(array $overrides = []): Reservation
+    {
+        return Reservation::create(array_merge([
+            'branch_id' => $this->branch->id,
+            'guest_id' => $this->guest->id,
+            'room_id' => $this->room->id,
+            'reservation_number' => 'HQ-RSV-0000001',
+            'check_in' => now()->toDateString(),
+            'check_out' => now()->addDays(3)->toDateString(),
+            'adults' => 2,
+            'children' => 0,
+            'status' => 'confirmed',
+            'total_amount' => 150000,
+            'balance_due' => 150000,
+        ], $overrides));
+    }
+
+    public function test_checkin_marks_the_stay_in_progress(): void
+    {
+        Event::fake([CheckinCompleted::class]);
+
+        $reservation = $this->makeReservation();
+        $this->room->update(['status' => RoomStatus::Reserved]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkins.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+                'notes' => 'Early arrival',
+            ])
+            ->assertRedirect(route('checkins.index'));
+
+        Event::assertDispatched(CheckinCompleted::class);
+
+        $this->assertSame('checked_in', $reservation->fresh()->status->value);
+        $this->assertSame($this->room->id, (int) $reservation->fresh()->room_id);
+        $this->assertSame('occupied', $this->room->fresh()->status->value);
+        $this->assertDatabaseHas('checkins', [
+            'reservation_id' => $reservation->id,
+            'room_id' => $this->room->id,
+            'status' => 'checked_in',
+        ]);
+    }
+
+    public function test_checkin_rejects_a_reservation_that_is_not_confirmed(): void
+    {
+        $reservation = $this->makeReservation(['status' => 'checked_in']);
+
+        $this->actingAs($this->user)
+            ->post(route('checkins.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertSessionHasErrors('reservation_id');
+
+        $this->assertDatabaseCount('checkins', 0);
+    }
+
+    public function test_checkin_rejects_a_guest_that_does_not_match_the_reservation(): void
+    {
+        $reservation = $this->makeReservation();
+
+        $otherGuest = Guest::create([
+            'branch_id' => $this->branch->id,
+            'first_name' => 'Eve',
+            'last_name' => 'Mallory',
+            'email' => 'eve@example.com',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkins.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $otherGuest->id,
+            ])
+            ->assertSessionHasErrors('guest_id');
+
+        $this->assertDatabaseCount('checkins', 0);
+        $this->assertSame('confirmed', $reservation->fresh()->status->value);
+    }
+
+    public function test_checkin_rejects_a_room_that_is_not_assigned_to_the_reservation(): void
+    {
+        $reservation = $this->makeReservation();
+
+        $otherRoom = Room::factory()->create([
+            'branch_id' => $this->branch->id,
+            'price' => 50000,
+            'status' => RoomStatus::Available,
+        ]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkins.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $otherRoom->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertSessionHasErrors('room_id');
+
+        $this->assertDatabaseCount('checkins', 0);
+    }
+
+    public function test_checkout_generates_a_final_invoice_and_syncs_balances(): void
+    {
+        Event::fake([CheckoutCompleted::class]);
+
+        $reservation = $this->makeReservation(['status' => 'checked_in']);
+        $this->room->update(['status' => RoomStatus::Occupied]);
+
+        Payment::create([
+            'branch_id' => $this->branch->id,
+            'guest_id' => $this->guest->id,
+            'reservation_id' => $reservation->id,
+            'payment_number' => 'HQ-PAY-0000001',
+            'method' => 'cash',
+            'status' => 'completed',
+            'amount' => 50000,
+            'paid_on' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkouts.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertRedirect(route('checkouts.index'));
+
+        Event::assertDispatched(CheckoutCompleted::class);
+
+        $fresh = $reservation->fresh();
+        $this->assertSame('checked_out', $fresh->status->value);
+        $this->assertEquals(100000, (float) $fresh->balance_due);
+        $this->assertSame('dirty', $this->room->fresh()->status->value);
+
+        $this->assertDatabaseHas('checkouts', [
+            'reservation_id' => $reservation->id,
+            'status' => 'completed',
+        ]);
+
+        $invoice = Invoice::query()->where('reservation_id', $reservation->id)->firstOrFail();
+        $this->assertEquals(150000, (float) $invoice->total);
+        $this->assertEquals(50000, (float) $invoice->amount_paid);
+        $this->assertSame('partially_paid', $invoice->status->value);
+    }
+
+    public function test_checkout_generates_an_unpaid_invoice_when_no_payments_exist(): void
+    {
+        $reservation = $this->makeReservation(['status' => 'checked_in']);
+        $this->room->update(['status' => RoomStatus::Occupied]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkouts.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertRedirect(route('checkouts.index'));
+
+        $invoice = Invoice::query()->where('reservation_id', $reservation->id)->firstOrFail();
+        $this->assertEquals(150000, (float) $invoice->total);
+        $this->assertEquals(0, (float) $invoice->amount_paid);
+        $this->assertSame('sent', $invoice->status->value);
+        $this->assertEquals(150000, (float) $reservation->fresh()->balance_due);
+    }
+
+    public function test_checkout_does_not_duplicate_an_existing_invoice(): void
+    {
+        $reservation = $this->makeReservation(['status' => 'checked_in']);
+        $this->room->update(['status' => RoomStatus::Occupied]);
+
+        Invoice::create([
+            'branch_id' => $this->branch->id,
+            'reservation_id' => $reservation->id,
+            'guest_id' => $this->guest->id,
+            'invoice_number' => 'HQ-INV-0000009',
+            'issued_on' => now()->toDateString(),
+            'due_on' => now()->toDateString(),
+            'subtotal' => 150000,
+            'tax' => 0,
+            'discount' => 0,
+            'total' => 150000,
+            'amount_paid' => 0,
+            'status' => 'sent',
+        ]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkouts.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertRedirect(route('checkouts.index'));
+
+        $this->assertSame(1, Invoice::count());
+    }
+
+    public function test_checkout_rejects_a_reservation_that_has_not_checked_in(): void
+    {
+        $reservation = $this->makeReservation(['status' => 'confirmed']);
+
+        $this->actingAs($this->user)
+            ->post(route('checkouts.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertSessionHasErrors('reservation_id');
+
+        $this->assertDatabaseCount('checkouts', 0);
+        $this->assertSame(0, Invoice::count());
+    }
+}

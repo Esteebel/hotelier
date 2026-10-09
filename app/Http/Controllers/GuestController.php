@@ -31,7 +31,8 @@ class GuestController extends Controller
                         ->where('first_name', 'like', '%'.$request->string('search').'%')
                         ->orWhere('last_name', 'like', '%'.$request->string('search').'%')
                         ->orWhere('email', 'like', '%'.$request->string('search').'%')
-                        ->orWhere('phone', 'like', '%'.$request->string('search').'%'),
+                        ->orWhere('phone', 'like', '%'.$request->string('search').'%')
+                        ->orWhere('guest_number', 'like', '%'.$request->string('search').'%'),
                 ),
             )
             ->latest()
@@ -40,6 +41,7 @@ class GuestController extends Controller
             ->through(
                 fn (Guest $guest) => [
                     'id' => $guest->id,
+                    'guest_number' => $guest->guest_number,
                     'name' => $guest->full_name,
                     'email' => $guest->email,
                     'phone' => $guest->phone,

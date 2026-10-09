@@ -63,8 +63,9 @@ class RoomTransfer extends Model
     public static function nextTransferNumber(): string
     {
         $prefix = ContextualBranch::resolve()?->code ?? 'HQ';
+        $next = (int) static::query()->withTrashed()->max('id') + 1;
 
-        return $prefix.'-TR-'.str_pad((string) (static::query()->count() + 1), 5, '0', STR_PAD_LEFT);
+        return $prefix.'-TR-'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
     }
 
     public function scopeForBranch(Builder $query, ?int $branchId): Builder

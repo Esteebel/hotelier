@@ -25,7 +25,7 @@ class GuestCrudTest extends TestCase
 
         $this->seed(PermissionSeeder::class);
 
-        $this->branch = HotelBranch::factory()->create();
+        $this->branch = HotelBranch::factory()->create(['is_default' => true]);
 
         $this->user = User::factory()->create();
         $this->user->givePermissionTo([

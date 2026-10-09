@@ -18,6 +18,7 @@ class PaymentRequest extends FormRequest
         return [
             'branch_id' => ['required', 'integer', 'exists:hotel_branches,id'],
             'reservation_id' => ['nullable', 'integer', 'exists:reservations,id'],
+            'invoice_id' => ['nullable', 'integer', 'exists:invoices,id'],
             'guest_id' => ['required', 'integer', 'exists:guests,id'],
             'payment_number' => [
                 'required', 'string', 'max:30',

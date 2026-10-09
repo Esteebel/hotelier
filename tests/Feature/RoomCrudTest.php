@@ -29,7 +29,7 @@ class RoomCrudTest extends TestCase
 
         $this->seed(PermissionSeeder::class);
 
-        $this->branch = HotelBranch::factory()->create();
+        $this->branch = HotelBranch::factory()->create(['is_default' => true]);
         $this->roomType = RoomType::factory()->create([
             'branch_id' => $this->branch->id,
             'name' => 'Deluxe King',

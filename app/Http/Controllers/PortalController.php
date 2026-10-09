@@ -252,38 +252,24 @@ class PortalController extends Controller
         $checkIn = Carbon::parse($data['check_in'])->startOfDay();
         $checkOut = Carbon::parse($data['check_out'])->startOfDay();
 
-        $clash = $room->reservations()
-            ->withoutGlobalScope('branch')
-            ->whereIn('status', ['confirmed', 'checked_in', 'extended'])
-            ->where('check_in', '<', $checkOut->toDateString())
-            ->where('check_out', '>', $checkIn->toDateString())
-            ->exists();
-
-        if ($clash) {
+        try {
+            $reservation = app(ReservationService::class)->create([
+                'room_id' => $room->id,
+                'guest_id' => $guest->id,
+                'reservation_number' => $this->nextReservationNumber($room),
+                'check_in' => $checkIn->toDateString(),
+                'check_out' => $checkOut->toDateString(),
+                'adults' => (int) $data['adults'],
+                'children' => $children,
+                'status' => 'confirmed',
+                'special_requests' => $data['special_requests'] ?? null,
+                'created_by' => $user->id,
+            ]);
+        } catch (\RuntimeException $e) {
             return back()->withErrors([
                 'room_id' => 'Room '.$room->room_number.' is not available for the selected dates. Please pick different dates or another room.',
             ])->withInput();
         }
-
-        $nights = max(1, (int) $checkIn->diffInDays($checkOut));
-        $nightly = (float) ($room->price ?? $room->roomType?->base_price ?? 0);
-        $total = round($nights * $nightly, 2);
-
-        $reservation = Reservation::create([
-            'branch_id' => $room->branch_id,
-            'guest_id' => $guest->id,
-            'room_id' => $room->id,
-            'reservation_number' => $this->nextReservationNumber($room),
-            'check_in' => $checkIn->toDateString(),
-            'check_out' => $checkOut->toDateString(),
-            'adults' => (int) $data['adults'],
-            'children' => $children,
-            'status' => 'confirmed',
-            'total_amount' => $total,
-            'balance_due' => $total,
-            'special_requests' => $data['special_requests'] ?? null,
-            'created_by' => $user->id,
-        ]);
 
         GuestNotifier::notify(
             $guest,
@@ -456,9 +442,9 @@ class PortalController extends Controller
     private function nextReservationNumber(Room $room): string
     {
         $branchCode = $room->branch?->code ?? ContextualBranch::current()?->code ?? 'HQ';
-        $count = Reservation::withTrashed()->count() + 1;
+        $max = (int) Reservation::withTrashed()->max('id');
 
-        return $branchCode.'-RSV-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
+        return $branchCode.'-RSV-'.str_pad((string) ($max + 1), 7, '0', STR_PAD_LEFT);
     }
 
     /**

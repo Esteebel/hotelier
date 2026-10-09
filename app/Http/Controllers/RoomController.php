@@ -106,7 +106,13 @@ class RoomController extends Controller
     {
         $this->authorize('update', $room);
 
+        $oldStatus = $room->status?->value;
+
         $room->update($request->validated());
+
+        if ($oldStatus !== null && $oldStatus !== $room->status?->value) {
+            \App\Events\RoomStatusChanged::dispatch($room, $oldStatus, $room->status->value);
+        }
 
         return redirect()
             ->route('rooms.index')

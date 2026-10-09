@@ -13,12 +13,14 @@ import TextInput from "@/Components/TextInput.vue";
 const props = defineProps({
     guests: { type: Array, default: () => [] },
     reservations: { type: Array, default: () => [] },
+    invoices: { type: Array, default: () => [] },
     activeBranch: { type: Object, default: null },
 });
 
 const form = useForm({
     guest_id: "",
     reservation_id: "",
+    invoice_id: "",
     method: "cash",
     amount: "",
     paid_on: "",
@@ -90,6 +92,27 @@ const submit = () => {
                                 {{ r.reservation_number }}
                             </option>
                         </SelectInput>
+                    </div>
+
+                    <div>
+                        <InputLabel value="Invoice" />
+                        <SelectInput
+                            v-model="form.invoice_id"
+                            class="mt-1 block w-full"
+                        >
+                            <option value="">No invoice</option>
+                            <option
+                                v-for="invoice in invoices"
+                                :key="invoice.id"
+                                :value="invoice.id"
+                            >
+                                {{ invoice.invoice_number }}
+                            </option>
+                        </SelectInput>
+                        <InputError
+                            class="mt-2"
+                            :message="form.errors.invoice_id"
+                        />
                     </div>
 
                     <div>

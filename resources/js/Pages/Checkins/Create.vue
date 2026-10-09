@@ -5,7 +5,7 @@ import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import TextAreaInput from "@/Components/TextAreaInput.vue";
-import { computed } from "vue";
+import { computed, watch } from "vue";
 
 const props = defineProps({
     reservations: Array,
@@ -24,6 +24,23 @@ const form = useForm({
 const selectedReservation = computed(() => {
     return props.reservations.find((r) => r.id === Number(form.reservation_id));
 });
+
+const availableRooms = computed(() => {
+    if (!selectedReservation.value?.room_id) {
+        return props.rooms;
+    }
+    return props.rooms.filter(
+        (room) => room.id === selectedReservation.value.room_id,
+    );
+});
+
+watch(
+    () => form.reservation_id,
+    () => {
+        form.room_id = selectedReservation.value?.room_id ?? "";
+        form.guest_id = selectedReservation.value?.guest_id ?? "";
+    },
+);
 
 function store() {
     form.post(route("checkins.store"));
@@ -83,7 +100,7 @@ function store() {
                             >
                                 <option value="">Select room...</option>
                                 <option
-                                    v-for="room in rooms"
+                                    v-for="room in availableRooms"
                                     :key="room.id"
                                     :value="room.id"
                                 >

@@ -20,6 +20,7 @@ class Guest extends Model
     use HasOrganizationScope;
 
     protected $fillable = [
+        'guest_number',
         'branch_id',
         'first_name',
         'last_name',
@@ -82,6 +83,14 @@ class Guest extends Model
             }
 
             $builder->where('branch_id', ContextualBranch::id());
+        });
+
+        static::creating(function (Guest $guest): void {
+            if (! $guest->guest_number) {
+                $max = (int) static::withoutGlobalScopes()->max('id');
+
+                $guest->guest_number = 'GST-'.str_pad((string) ($max + 1), 6, '0', STR_PAD_LEFT);
+            }
         });
     }
 }

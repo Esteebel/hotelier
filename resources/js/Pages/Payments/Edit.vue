@@ -13,12 +13,14 @@ const props = defineProps({
     payment: { type: Object, required: true },
     guests: { type: Array, default: () => [] },
     reservations: { type: Array, default: () => [] },
+    invoices: { type: Array, default: () => [] },
     activeBranch: { type: Object, default: null },
 });
 
 const form = useForm({
     guest_id: props.payment.guest_id ?? "",
     reservation_id: props.payment.reservation_id ?? "",
+    invoice_id: props.payment.invoice_id ?? "",
     payment_number: props.payment.payment_number ?? "",
     method: props.payment.method ?? "cash",
     amount: props.payment.amount ?? "",
@@ -96,6 +98,27 @@ const submit = () => {
                                 {{ r.reservation_number }}
                             </option>
                         </SelectInput>
+                    </div>
+
+                    <div>
+                        <InputLabel value="Invoice" />
+                        <SelectInput
+                            v-model="form.invoice_id"
+                            class="mt-1 block w-full"
+                        >
+                            <option value="">No invoice</option>
+                            <option
+                                v-for="invoice in invoices"
+                                :key="invoice.id"
+                                :value="invoice.id"
+                            >
+                                {{ invoice.invoice_number }}
+                            </option>
+                        </SelectInput>
+                        <InputError
+                            class="mt-2"
+                            :message="form.errors.invoice_id"
+                        />
                     </div>
 
                     <div>

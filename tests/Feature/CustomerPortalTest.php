@@ -436,6 +436,7 @@ class CustomerPortalTest extends TestCase
         $this->assertEquals(225000, (float) $reservation->total_amount);
         $this->assertEquals(225000, (float) $reservation->balance_due);
         $this->assertNotEmpty($reservation->reservation_number);
+        $this->assertSame('reserved', $room->fresh()->status->value);
     }
 
     public function test_booking_is_rejected_when_the_room_is_taken_for_those_dates(): void

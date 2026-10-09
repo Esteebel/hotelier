@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentStatus;
+use App\Events\PaymentReceived;
 use App\Http\Requests\PaymentRequest;
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reservation;
+use App\Services\InvoiceService;
 use App\Support\ContextualBranch;
 use App\Support\GuestNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -74,6 +79,7 @@ class PaymentController extends Controller
         return Inertia::render('Payments/Create', [
             'guests' => $this->guestOptions(),
             'reservations' => $this->reservationOptions(),
+            'invoices' => $this->invoiceOptions(),
             'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
@@ -85,7 +91,14 @@ class PaymentController extends Controller
         $data = $request->validated();
         $data['received_by'] = $request->user()?->id;
 
-        $payment = Payment::create($data);
+        $payment = DB::transaction(function () use ($data) {
+            $payment = Payment::create($data);
+
+            $this->syncBalances($payment);
+            PaymentReceived::dispatch($payment, $payment->branch_id);
+
+            return $payment;
+        });
 
         if (($data['status'] ?? null) === 'completed') {
             GuestNotifier::notify(
@@ -112,6 +125,7 @@ class PaymentController extends Controller
                 'branch_id' => $payment->branch_id,
                 'guest_id' => $payment->guest_id,
                 'reservation_id' => $payment->reservation_id,
+                'invoice_id' => $payment->invoice_id,
                 'payment_number' => $payment->payment_number,
                 'reference' => $payment->reference,
                 'method' => $payment->method->value,
@@ -122,6 +136,7 @@ class PaymentController extends Controller
             ],
             'guests' => $this->guestOptions(),
             'reservations' => $this->reservationOptions(),
+            'invoices' => $this->invoiceOptions($payment->invoice_id),
             'activeBranch' => ContextualBranch::resolve()?->only(['id', 'name', 'code']),
         ]);
     }
@@ -130,7 +145,12 @@ class PaymentController extends Controller
     {
         $this->authorize('update', $payment);
 
-        $payment->update($request->validated());
+        DB::transaction(function () use ($request, $payment) {
+            $payment->update($request->validated());
+
+            $this->syncBalances($payment);
+            PaymentReceived::dispatch($payment, $payment->branch_id);
+        });
 
         return redirect()
             ->route('payments.index')
@@ -141,11 +161,47 @@ class PaymentController extends Controller
     {
         $this->authorize('delete', $payment);
 
-        $payment->delete();
+        DB::transaction(function () use ($payment) {
+            $payment->delete();
+
+            // Recompute after removal (soft-deleted payments drop out of the
+            // completed-payments sums).
+            $this->syncBalances($payment);
+        });
 
         return redirect()
             ->route('payments.index')
             ->with('success', 'Payment deleted successfully.');
+    }
+
+    /**
+     * Keep invoice.amount_paid + status and reservation.balance_due in step
+     * with the set of completed payments.
+     */
+    private function syncBalances(Payment $payment): void
+    {
+        if ($payment->invoice_id) {
+            $invoice = Invoice::find($payment->invoice_id);
+
+            if ($invoice) {
+                app(InvoiceService::class)->syncPaymentStatus($invoice);
+            }
+        }
+
+        if ($payment->reservation_id) {
+            $reservation = Reservation::withoutGlobalScope('branch')
+                ->find($payment->reservation_id);
+
+            if ($reservation) {
+                $paid = (float) $reservation->payments()
+                    ->where('status', PaymentStatus::Completed->value)
+                    ->sum('amount');
+
+                $reservation->update([
+                    'balance_due' => max(0, round((float) $reservation->total_amount - $paid, 2)),
+                ]);
+            }
+        }
     }
 
     /**
@@ -154,10 +210,31 @@ class PaymentController extends Controller
     private function reservationOptions(): array
     {
         return Reservation::query()
-            ->whereIn('status', ['confirmed', 'checked_in'])
+            ->whereIn('status', ['confirmed', 'checked_in', 'extended'])
             ->orderByDesc('check_in')
             ->get(['id', 'reservation_number'])
             ->map(fn (Reservation $res) => $res->only(['id', 'reservation_number']))
+            ->all();
+    }
+
+    /**
+     * Unsettled, non-void invoices for the active branch (plus the invoice
+     * already linked to the payment being edited, so it stays selectable).
+     *
+     * @return array<int, array{id: int, invoice_number: string}>
+     */
+    private function invoiceOptions(?int $includeId = null): array
+    {
+        $branchId = ContextualBranch::id();
+
+        return Invoice::query()
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->where(fn ($query) => $query
+                ->whereIn('status', ['draft', 'sent', 'partially_paid', 'overdue'])
+                ->when($includeId, fn ($q) => $q->orWhere('id', $includeId)))
+            ->orderByDesc('issued_on')
+            ->get(['id', 'invoice_number'])
+            ->map(fn (Invoice $invoice) => $invoice->only(['id', 'invoice_number']))
             ->all();
     }
 

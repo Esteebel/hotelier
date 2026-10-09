@@ -3,7 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\ReservationCancelled;
-use App\Models\Room;
+use App\Services\ReservationService;
 
 class HandleReservationCancellation
 {
@@ -11,11 +11,11 @@ class HandleReservationCancellation
     {
         $reservation = $event->reservation;
 
-        // Free up the room if it was reserved
-        if ($reservation->room_id) {
-            Room::where('id', $reservation->room_id)
-                ->where('status', 'reserved')
-                ->update(['status' => 'available']);
-        }
+        // Free the room only if no other active reservation still holds it
+        // (never clobbers occupied/maintenance states).
+        app(ReservationService::class)->releaseRoomIfReserved(
+            $reservation->room_id,
+            $reservation->id,
+        );
     }
 }

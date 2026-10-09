@@ -46,7 +46,10 @@ class InvoiceRequest extends FormRequest
         }
 
         if (! $this->has('invoice_number')) {
-            $count = \App\Models\Invoice::withTrashed()->count() + 1;
+            $branchId = $this->input('branch_id') ?? ContextualBranch::id();
+            $count = \App\Models\Invoice::withTrashed()
+                ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+                ->count() + 1;
             $branchCode = ContextualBranch::current()?->code ?? 'HQ';
             $merge['invoice_number'] = $branchCode.'-INV-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
         }

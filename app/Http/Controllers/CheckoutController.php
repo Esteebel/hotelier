@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\RoomStatus;
+use App\Events\CheckoutCompleted;
 use App\Http\Requests\CheckoutRequest;
 use App\Models\Checkout;
 use App\Models\Guest;
@@ -10,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
+use App\Services\InvoiceService;
 use App\Support\ContextualBranch;
 use App\Support\GuestNotifier;
 use Illuminate\Http\RedirectResponse;
@@ -108,8 +110,8 @@ class CheckoutController extends Controller
 
             // Calculate totals from reservation and payments
             $reservation = Reservation::with('payments')->findOrFail($data['reservation_id']);
-            $totalPaid = $reservation->payments()->where('status', 'completed')->sum('amount');
-            $balanceDue = max(0, $reservation->total_amount - $totalPaid);
+            $totalPaid = (float) $reservation->payments()->where('status', 'completed')->sum('amount');
+            $balanceDue = max(0, (float) $reservation->total_amount - $totalPaid);
 
             $data['total_charges'] = $reservation->total_amount;
             $data['total_paid'] = $totalPaid;
@@ -117,13 +119,30 @@ class CheckoutController extends Controller
 
             $checkout = Checkout::create($data);
 
-            // Update reservation status
-            Reservation::where('id', $data['reservation_id'])
-                ->update(['status' => 'checked_out']);
+            // Reservation: checked out + final balance due reconciled.
+            $reservation->update([
+                'status' => 'checked_out',
+                'balance_due' => $balanceDue,
+            ]);
 
-            // Update room status to dirty (needs cleaning)
-            Room::where('id', $data['room_id'])
+            // Vacated room goes to dirty (never clobbers maintenance states).
+            Room::withoutGlobalScope('organization')
+                ->where('id', $data['room_id'])
+                ->whereIn('status', ['occupied', 'reserved'])
                 ->update(['status' => RoomStatus::Dirty->value]);
+
+            // Final invoice (unless one already exists for this stay).
+            $invoiced = Invoice::query()
+                ->where('reservation_id', $reservation->id)
+                ->exists();
+
+            if (! $invoiced) {
+                app(InvoiceService::class)->generateFinalInvoice(
+                    $reservation,
+                    $totalPaid,
+                    $request->user()->id,
+                );
+            }
 
             GuestNotifier::notify(
                 Guest::find($data['guest_id']),
@@ -133,6 +152,8 @@ class CheckoutController extends Controller
                     .'. Balance due: ₦'.number_format((float) $data['balance_due'], 2).'.',
                 'info',
             );
+
+            CheckoutCompleted::dispatch($checkout, $data['branch_id']);
 
             DB::commit();
 
