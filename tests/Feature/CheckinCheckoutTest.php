@@ -16,6 +16,7 @@ use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class CheckinCheckoutTest extends TestCase
@@ -278,5 +279,53 @@ class CheckinCheckoutTest extends TestCase
 
         $this->assertDatabaseCount('checkouts', 0);
         $this->assertSame(0, Invoice::count());
+    }
+
+    public function test_checkin_index_lists_checkins_with_processor(): void
+    {
+        $reservation = $this->makeReservation();
+        $this->room->update(['status' => RoomStatus::Reserved]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkins.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertRedirect(route('checkins.index'));
+
+        $this->actingAs($this->user)
+            ->get(route('checkins.index'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Checkins/Index')
+                    ->has('checkins.data', 1)
+                    ->where('checkins.data.0.processor.name', $this->user->name),
+            );
+    }
+
+    public function test_checkout_index_lists_checkouts_with_processor(): void
+    {
+        $reservation = $this->makeReservation(['status' => 'checked_in']);
+        $this->room->update(['status' => RoomStatus::Occupied]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkouts.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertRedirect(route('checkouts.index'));
+
+        $this->actingAs($this->user)
+            ->get(route('checkouts.index'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Checkouts/Index')
+                    ->has('checkouts.data', 1)
+                    ->where('checkouts.data.0.processor.name', $this->user->name),
+            );
     }
 }

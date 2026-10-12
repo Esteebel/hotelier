@@ -103,8 +103,7 @@ function applyFilters() {
                                     <td
                                         class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
                                     >
-                                        {{ log.user?.first_name }}
-                                        {{ log.user?.last_name }}
+                                        {{ log.user?.name }}
                                     </td>
                                     <td
                                         class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"

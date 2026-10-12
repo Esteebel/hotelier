@@ -31,7 +31,7 @@ class RoomTransferController extends Controller
                 'reservation:id,reservation_number',
                 'fromRoom:id,room_number',
                 'toRoom:id,room_number',
-                'requester:id,first_name,last_name',
+                'requester:id,name',
             ])
             ->forBranch(ContextualBranch::id())
             ->when(request('search'), fn ($q, $s) => $q

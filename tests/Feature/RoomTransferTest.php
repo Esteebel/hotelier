@@ -239,4 +239,20 @@ class RoomTransferTest extends TestCase
         $this->assertSame('occupied', $this->toRoom->fresh()->status->value);
         $this->assertSame($this->toRoom->id, (int) $reservation->fresh()->room_id);
     }
+
+    public function test_index_lists_transfers_with_requester(): void
+    {
+        $reservation = $this->makeReservation();
+        $this->makeTransfer($reservation);
+
+        $this->actingAs($this->user)
+            ->get(route('room-transfers.index'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('RoomTransfers/Index')
+                    ->has('transfers.data', 1)
+                    ->where('transfers.data.0.requester.name', $this->user->name),
+            );
+    }
 }

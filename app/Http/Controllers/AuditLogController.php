@@ -20,7 +20,7 @@ class AuditLogController extends Controller
         $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
 
         $logs = AuditLog::query()
-            ->with(['branch:id,name', 'user:id,first_name,last_name'])
+            ->with(['branch:id,name', 'user:id,name'])
             ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
             ->when(
                 $request->filled('search'),

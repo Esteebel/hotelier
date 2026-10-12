@@ -90,7 +90,7 @@ function formatCurrency(amount) {
                                     <dd class="mt-1 font-medium text-gray-900">
                                         {{
                                             checkout.processor
-                                                ? `${checkout.processor.first_name} ${checkout.processor.last_name}`
+                                                ? checkout.processor.name
                                                 : "-"
                                         }}
                                     </dd>

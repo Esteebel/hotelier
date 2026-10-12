@@ -19,7 +19,7 @@ class ExpenseController extends Controller
         $branchId = $request->integer('branch_id', ContextualBranch::id() ?? 0);
 
         $expenses = Expense::query()
-            ->with(['branch:id,name', 'creator:id,first_name,last_name'])
+            ->with(['branch:id,name', 'creator:id,name'])
             ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
             ->when(
                 $request->filled('search'),

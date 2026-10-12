@@ -95,7 +95,7 @@ const statusLabel =
                                     <dd class="mt-1 font-medium text-gray-900">
                                         {{
                                             checkin.processor
-                                                ? `${checkin.processor.first_name} ${checkin.processor.last_name}`
+                                                ? checkin.processor.name
                                                 : "-"
                                         }}
                                     </dd>

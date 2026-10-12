@@ -31,7 +31,7 @@ class CheckinController extends Controller
                 'reservation:id,reservation_number',
                 'room:id,room_number',
                 'guest:id,first_name,last_name',
-                'processor:id,first_name,last_name',
+                'processor:id,name',
             ])
             ->when($branchId > 0, fn ($query) => $query->where('branch_id', $branchId))
             ->when(
@@ -157,7 +157,7 @@ class CheckinController extends Controller
             'reservation:id,reservation_number,check_in,check_out,total_amount',
             'room:id,room_number,room_type_id',
             'guest:id,first_name,last_name,email,phone',
-            'processor:id,first_name,last_name',
+            'processor:id,name',
         ]);
 
         return Inertia::render('Checkins/Show', [
