@@ -55,4 +55,36 @@ class HotelReportTest extends TestCase
             ->get(route('reports.index'))
             ->assertForbidden();
     }
+
+    public function test_export_streams_csv_for_each_report_type(): void
+    {
+        $expectations = [
+            'reservations' => 'ID,Guest,Room',
+            'payments' => 'ID,Reservation,Amount',
+            'guests' => 'Name,Email,Phone',
+        ];
+
+        foreach ($expectations as $type => $header) {
+            $response = $this->actingAs($this->user)
+                ->get(route('reports.export', ['type' => $type]))
+                ->assertOk();
+
+            $content = $response->streamedContent();
+
+            $this->assertStringContainsString($header, $content, "Missing header for {$type} export.");
+            $this->assertStringContainsString(
+                "{$type}_report_",
+                (string) $response->headers->get('Content-Disposition'),
+            );
+        }
+    }
+
+    public function test_export_forbids_user_without_view_reports_permission(): void
+    {
+        $other = User::factory()->create();
+
+        $this->actingAs($other)
+            ->get(route('reports.export', ['type' => 'reservations']))
+            ->assertForbidden();
+    }
 }

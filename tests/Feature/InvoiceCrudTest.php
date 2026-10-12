@@ -268,4 +268,18 @@ class InvoiceCrudTest extends TestCase
 
         $this->assertEquals(7500, (float) $invoice->tax);
     }
+
+    public function test_invoice_edit_page_loads(): void
+    {
+        $invoice = $this->makeInvoice();
+
+        $this->actingAs($this->user)
+            ->get(route('invoices.edit', $invoice))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Invoices/Edit')
+                    ->where('invoice.id', $invoice->id),
+            );
+    }
 }

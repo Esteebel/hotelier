@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PermissionName;
 use App\Models\HotelBranch;
+use App\Models\MaintenanceTask;
 use App\Models\Room;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -109,5 +110,76 @@ class MaintenanceTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('maintenance_tasks', 0);
+    }
+
+    private function makeTask(): MaintenanceTask
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('maintenance.store'), $this->payload());
+
+        return MaintenanceTask::firstOrFail();
+    }
+
+    public function test_edit_page_loads_for_existing_task(): void
+    {
+        $task = $this->makeTask();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->get(route('maintenance.edit', $task))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Maintenance/Edit')
+                    ->where('task.id', $task->id),
+            );
+    }
+
+    public function test_update_persists_changes(): void
+    {
+        $task = $this->makeTask();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('maintenance.update', $task), $this->payload([
+                'task_number' => $task->task_number,
+                'task_type' => 'electrical',
+                'notes' => 'Rewired socket',
+            ]))
+            ->assertRedirect(route('maintenance.index'));
+
+        $this->assertDatabaseHas('maintenance_tasks', [
+            'id' => $task->id,
+            'task_type' => 'electrical',
+            'notes' => 'Rewired socket',
+        ]);
+    }
+
+    public function test_complete_marks_task_completed(): void
+    {
+        $task = $this->makeTask();
+
+        $this->actingAs($this->user)
+            ->post(route('maintenance.complete', $task))
+            ->assertRedirect(route('maintenance.index'));
+
+        $this->assertDatabaseHas('maintenance_tasks', [
+            'id' => $task->id,
+            'status' => 'completed',
+            'handled_by' => $this->user->id,
+        ]);
+        $this->assertNotNull($task->fresh()->handled_at);
+    }
+
+    public function test_destroy_removes_task(): void
+    {
+        $task = $this->makeTask();
+
+        $this->actingAs($this->user)
+            ->delete(route('maintenance.destroy', $task))
+            ->assertRedirect(route('maintenance.index'));
+
+        $this->assertSame(0, MaintenanceTask::count());
     }
 }

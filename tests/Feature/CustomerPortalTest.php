@@ -602,4 +602,16 @@ class CustomerPortalTest extends TestCase
         $this->assertSame(1, FoodOrder::count());
         $this->assertSame($room->id, FoodOrder::firstOrFail()->room_id);
     }
+
+    public function test_customer_profile_page_loads(): void
+    {
+        $this->actingAs($this->customer)
+            ->get(route('portal.profile'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Portal/Profile')
+                    ->where('profile.email', $this->customer->email),
+            );
+    }
 }

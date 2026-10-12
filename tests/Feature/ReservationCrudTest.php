@@ -463,4 +463,18 @@ class ReservationCrudTest extends TestCase
 
         $this->assertDatabaseHas('reservations', ['id' => $reservation->id]);
     }
+
+    public function test_reservation_edit_page_loads(): void
+    {
+        $reservation = $this->makeReservation();
+
+        $this->actingAs($this->user)
+            ->get(route('reservations.edit', $reservation))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Reservations/Edit')
+                    ->where('reservation.id', $reservation->id),
+            );
+    }
 }

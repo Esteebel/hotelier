@@ -306,4 +306,18 @@ class HotelUserManagementTest extends TestCase
             ])
             ->assertForbidden();
     }
+
+    public function test_user_edit_page_loads(): void
+    {
+        $target = User::factory()->create(['name' => 'Edit Target']);
+
+        $this->actingAs($this->user)
+            ->get(route('users.edit', $target))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Users/Edit')
+                    ->where('user.id', $target->id),
+            );
+    }
 }

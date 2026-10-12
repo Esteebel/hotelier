@@ -184,4 +184,18 @@ class GuestCrudTest extends TestCase
 
         $this->assertDatabaseHas('guests', ['id' => $guest->id]);
     }
+
+    public function test_guest_edit_page_loads(): void
+    {
+        $guest = $this->makeGuest();
+
+        $this->actingAs($this->user)
+            ->get(route('guests.edit', $guest))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Guests/Edit')
+                    ->where('guest.id', $guest->id),
+            );
+    }
 }

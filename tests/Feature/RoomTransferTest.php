@@ -255,4 +255,41 @@ class RoomTransferTest extends TestCase
                     ->where('transfers.data.0.requester.name', $this->user->name),
             );
     }
+
+    public function test_update_persists_changes(): void
+    {
+        $reservation = $this->makeReservation();
+        $transfer = $this->makeTransfer($reservation);
+
+        $this->actingAs($this->user)
+            ->put(route('room-transfers.update', $transfer), [
+                'from_room_id' => $this->fromRoom->id,
+                'to_room_id' => $this->toRoom->id,
+                'reservation_id' => $reservation->id,
+                'transfer_date' => now()->toDateString(),
+                'reason' => 'Suite upgrade',
+                'notes' => 'VIP guest',
+                'status' => 'approved',
+            ])
+            ->assertRedirect(route('room-transfers.index'));
+
+        $this->assertDatabaseHas('room_transfers', [
+            'id' => $transfer->id,
+            'reason' => 'Suite upgrade',
+            'notes' => 'VIP guest',
+            'status' => 'approved',
+        ]);
+    }
+
+    public function test_destroy_removes_transfer(): void
+    {
+        $reservation = $this->makeReservation();
+        $transfer = $this->makeTransfer($reservation);
+
+        $this->actingAs($this->user)
+            ->delete(route('room-transfers.destroy', $transfer))
+            ->assertRedirect(route('room-transfers.index'));
+
+        $this->assertSame(0, RoomTransfer::count());
+    }
 }

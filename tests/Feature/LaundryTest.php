@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PermissionName;
 use App\Models\HotelBranch;
+use App\Models\LaundryOrder;
 use App\Models\Room;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -112,5 +113,73 @@ class LaundryTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('laundry_orders', 0);
+    }
+
+    private function makeOrder()
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('laundry.store'), $this->payload());
+
+        return LaundryOrder::firstOrFail();
+    }
+
+    public function test_edit_page_loads_for_existing_order(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->get(route('laundry.edit', $order))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Laundry/Edit')
+                    ->where('order.id', $order->id),
+            );
+    }
+
+    public function test_update_persists_changes(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('laundry.update', $order), $this->payload([
+                'total_amount' => 3000,
+                'notes' => 'Three shirts',
+            ]))
+            ->assertRedirect(route('laundry.index'));
+
+        $this->assertDatabaseHas('laundry_orders', [
+            'id' => $order->id,
+            'total_amount' => 3000,
+            'notes' => 'Three shirts',
+        ]);
+    }
+
+    public function test_complete_marks_order_completed(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->user)
+            ->post(route('laundry.complete', $order))
+            ->assertRedirect(route('laundry.index'));
+
+        $this->assertDatabaseHas('laundry_orders', [
+            'id' => $order->id,
+            'status' => 'completed',
+        ]);
+    }
+
+    public function test_destroy_removes_order(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->user)
+            ->delete(route('laundry.destroy', $order))
+            ->assertRedirect(route('laundry.index'));
+
+        $this->assertSame(0, LaundryOrder::count());
     }
 }

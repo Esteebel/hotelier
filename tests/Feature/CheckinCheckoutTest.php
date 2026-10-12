@@ -6,6 +6,8 @@ use App\Enums\PermissionName;
 use App\Enums\RoomStatus;
 use App\Events\CheckinCompleted;
 use App\Events\CheckoutCompleted;
+use App\Models\Checkin;
+use App\Models\Checkout;
 use App\Models\Guest;
 use App\Models\HotelBranch;
 use App\Models\Invoice;
@@ -327,5 +329,141 @@ class CheckinCheckoutTest extends TestCase
                     ->has('checkouts.data', 1)
                     ->where('checkouts.data.0.processor.name', $this->user->name),
             );
+    }
+
+    private function storeCheckin(): Checkin
+    {
+        $reservation = $this->makeReservation();
+        $this->room->update(['status' => RoomStatus::Reserved]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkins.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+                'notes' => 'Early arrival',
+            ])
+            ->assertRedirect(route('checkins.index'));
+
+        return Checkin::firstOrFail();
+    }
+
+    private function storeCheckout(): Checkout
+    {
+        $reservation = $this->makeReservation(['status' => 'checked_in']);
+        $this->room->update(['status' => RoomStatus::Occupied]);
+
+        $this->actingAs($this->user)
+            ->post(route('checkouts.store'), [
+                'reservation_id' => $reservation->id,
+                'room_id' => $this->room->id,
+                'guest_id' => $this->guest->id,
+            ])
+            ->assertRedirect(route('checkouts.index'));
+
+        return Checkout::firstOrFail();
+    }
+
+    public function test_checkin_edit_page_loads(): void
+    {
+        $checkin = $this->storeCheckin();
+
+        $this->actingAs($this->user)
+            ->get(route('checkins.edit', $checkin))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Checkins/Edit')
+                    ->where('checkin.id', $checkin->id),
+            );
+    }
+
+    public function test_checkin_update_persists_notes(): void
+    {
+        $checkin = $this->storeCheckin();
+
+        $this->actingAs($this->user)
+            ->put(route('checkins.update', $checkin), [
+                'reservation_id' => $checkin->reservation_id,
+                'room_id' => $checkin->room_id,
+                'guest_id' => $checkin->guest_id,
+                'notes' => 'Updated check-in notes',
+            ])
+            ->assertRedirect(route('checkins.index'));
+
+        $this->assertDatabaseHas('checkins', [
+            'id' => $checkin->id,
+            'notes' => 'Updated check-in notes',
+        ]);
+    }
+
+    public function test_checkin_complete_marks_completed(): void
+    {
+        $checkin = $this->storeCheckin();
+
+        $this->actingAs($this->user)
+            ->post(route('checkins.complete', $checkin))
+            ->assertRedirect(route('checkins.index'));
+
+        $this->assertDatabaseHas('checkins', [
+            'id' => $checkin->id,
+            'status' => 'completed',
+            'processed_by' => $this->user->id,
+        ]);
+    }
+
+    public function test_checkin_destroy_restores_room_to_reserved(): void
+    {
+        $checkin = $this->storeCheckin();
+
+        $this->actingAs($this->user)
+            ->delete(route('checkins.destroy', $checkin))
+            ->assertRedirect(route('checkins.index'));
+
+        $this->assertSame(0, Checkin::count());
+        $this->assertSame('reserved', $this->room->fresh()->status->value);
+    }
+
+    public function test_checkout_edit_page_loads(): void
+    {
+        $checkout = $this->storeCheckout();
+
+        $this->actingAs($this->user)
+            ->get(route('checkouts.edit', $checkout))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Checkouts/Edit')
+                    ->where('checkout.id', $checkout->id),
+            );
+    }
+
+    public function test_checkout_complete_records_processor(): void
+    {
+        $checkout = $this->storeCheckout();
+
+        $this->actingAs($this->user)
+            ->post(route('checkouts.complete', $checkout))
+            ->assertRedirect(route('checkouts.index'));
+
+        $this->assertDatabaseHas('checkouts', [
+            'id' => $checkout->id,
+            'status' => 'completed',
+            'processed_by' => $this->user->id,
+        ]);
+    }
+
+    public function test_checkout_destroy_restores_room_and_reservation(): void
+    {
+        $checkout = $this->storeCheckout();
+        $reservationId = $checkout->reservation_id;
+
+        $this->actingAs($this->user)
+            ->delete(route('checkouts.destroy', $checkout))
+            ->assertRedirect(route('checkouts.index'));
+
+        $this->assertSame(0, Checkout::count());
+        $this->assertSame('occupied', $this->room->fresh()->status->value);
+        $this->assertSame('checked_in', Reservation::find($reservationId)->status->value);
     }
 }

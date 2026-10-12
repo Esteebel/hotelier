@@ -159,4 +159,16 @@ class MenuItemCrudTest extends TestCase
                     ->where('menuItem.name', 'Jollof Rice'),
             );
     }
+
+    public function test_menu_create_page_loads_for_authorized_user(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('menu.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Restaurant/Menu/Create')
+                    ->has('categories'),
+            );
+    }
 }

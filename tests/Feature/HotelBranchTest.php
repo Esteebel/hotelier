@@ -186,4 +186,19 @@ class HotelBranchTest extends TestCase
                     ->where('activeBranch', null),
             );
     }
+
+    public function test_branch_edit_page_loads(): void
+    {
+        $branch = HotelBranch::factory()->create(['name' => 'Edit Target Hotel']);
+
+        $this->actingAs($this->user)
+            ->get(route('branches.edit', $branch))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Branches/Edit')
+                    ->where('branch.id', $branch->id)
+                    ->has('organizations'),
+            );
+    }
 }

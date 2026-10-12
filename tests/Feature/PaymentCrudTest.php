@@ -206,4 +206,18 @@ class PaymentCrudTest extends TestCase
 
         $this->assertDatabaseHas('payments', ['id' => $payment->id]);
     }
+
+    public function test_payment_edit_page_loads(): void
+    {
+        $payment = $this->makePayment();
+
+        $this->actingAs($this->user)
+            ->get(route('payments.edit', $payment))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Payments/Edit')
+                    ->where('payment.id', $payment->id),
+            );
+    }
 }

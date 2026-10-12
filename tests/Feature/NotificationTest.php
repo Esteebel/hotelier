@@ -107,4 +107,77 @@ class NotificationTest extends TestCase
 
         $this->assertDatabaseCount('notifications', 0);
     }
+
+    private function makeNotification(array $overrides = []): Notification
+    {
+        return Notification::create(array_merge([
+            'notification_number' => 'NTF-TEST-'.uniqid(),
+            'branch_id' => $this->branch->id,
+            'user_id' => $this->user->id,
+            'title' => 'Weekly report',
+            'message' => 'Please review the report.',
+            'type' => 'info',
+            'status' => 'unread',
+        ], $overrides));
+    }
+
+    public function test_edit_page_loads_for_existing_notification(): void
+    {
+        $notification = $this->makeNotification();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->get(route('notifications.edit', $notification))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Notifications/Edit')
+                    ->where('notification.id', $notification->id),
+            );
+    }
+
+    public function test_update_persists_changes(): void
+    {
+        $notification = $this->makeNotification();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('notifications.update', $notification), [
+                'title' => 'Updated title',
+                'message' => 'Updated body',
+                'type' => 'alert',
+            ])
+            ->assertRedirect(route('notifications.index'));
+
+        $this->assertDatabaseHas('notifications', [
+            'id' => $notification->id,
+            'title' => 'Updated title',
+            'type' => 'alert',
+        ]);
+    }
+
+    public function test_complete_marks_notification_read(): void
+    {
+        $notification = $this->makeNotification();
+
+        $this->actingAs($this->user)
+            ->post(route('notifications.complete', $notification))
+            ->assertRedirect(route('notifications.index'));
+
+        $this->assertDatabaseHas('notifications', [
+            'id' => $notification->id,
+            'status' => 'read',
+        ]);
+    }
+
+    public function test_destroy_removes_notification(): void
+    {
+        $notification = $this->makeNotification();
+
+        $this->actingAs($this->user)
+            ->delete(route('notifications.destroy', $notification))
+            ->assertRedirect(route('notifications.index'));
+
+        $this->assertSame(0, Notification::count());
+    }
 }

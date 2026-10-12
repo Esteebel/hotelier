@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PermissionName;
 use App\Models\HotelBranch;
+use App\Models\HousekeepingTask;
 use App\Models\Room;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -112,5 +113,76 @@ class HousekeepingTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('housekeeping_tasks', 0);
+    }
+
+    private function makeTask(): HousekeepingTask
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('housekeeping.store'), $this->payload());
+
+        return HousekeepingTask::firstOrFail();
+    }
+
+    public function test_edit_page_loads_for_existing_task(): void
+    {
+        $task = $this->makeTask();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->get(route('housekeeping.edit', $task))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Housekeeping/Edit')
+                    ->where('task.id', $task->id),
+            );
+    }
+
+    public function test_update_persists_changes(): void
+    {
+        $task = $this->makeTask();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('housekeeping.update', $task), $this->payload([
+                'task_number' => $task->task_number,
+                'priority' => 'low',
+                'notes' => 'Updated notes',
+            ]))
+            ->assertRedirect(route('housekeeping.index'));
+
+        $this->assertDatabaseHas('housekeeping_tasks', [
+            'id' => $task->id,
+            'priority' => 'low',
+            'notes' => 'Updated notes',
+        ]);
+    }
+
+    public function test_complete_marks_task_completed(): void
+    {
+        $task = $this->makeTask();
+
+        $this->actingAs($this->user)
+            ->post(route('housekeeping.complete', $task))
+            ->assertRedirect(route('housekeeping.index'));
+
+        $this->assertDatabaseHas('housekeeping_tasks', [
+            'id' => $task->id,
+            'status' => 'completed',
+            'handled_by' => $this->user->id,
+        ]);
+        $this->assertNotNull($task->fresh()->handled_at);
+    }
+
+    public function test_destroy_removes_task(): void
+    {
+        $task = $this->makeTask();
+
+        $this->actingAs($this->user)
+            ->delete(route('housekeeping.destroy', $task))
+            ->assertRedirect(route('housekeeping.index'));
+
+        $this->assertSame(0, HousekeepingTask::count());
     }
 }

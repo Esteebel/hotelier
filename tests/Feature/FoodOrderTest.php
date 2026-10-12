@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\PermissionName;
+use App\Models\FoodOrder;
 use App\Models\HotelBranch;
 use App\Models\MenuItem;
 use App\Models\Room;
@@ -117,5 +118,74 @@ class FoodOrderTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('food_orders', 0);
+    }
+
+    private function makeOrder()
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('restaurant.store'), $this->payload());
+
+        return FoodOrder::firstOrFail();
+    }
+
+    public function test_edit_page_loads_for_existing_order(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->get(route('restaurant.edit', $order))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Restaurant/Edit')
+                    ->where('order.id', $order->id),
+            );
+    }
+
+    public function test_update_persists_changes(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('restaurant.update', $order), $this->payload([
+                'order_type' => 'takeout',
+                'notes' => 'Extra pepper',
+            ]))
+            ->assertRedirect(route('restaurant.index'));
+
+        $this->assertDatabaseHas('food_orders', [
+            'id' => $order->id,
+            'order_type' => 'takeout',
+            'notes' => 'Extra pepper',
+            'total_amount' => 10000,
+        ]);
+    }
+
+    public function test_complete_marks_order_completed(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->user)
+            ->post(route('restaurant.complete', $order))
+            ->assertRedirect(route('restaurant.index'));
+
+        $this->assertDatabaseHas('food_orders', [
+            'id' => $order->id,
+            'status' => 'completed',
+        ]);
+    }
+
+    public function test_destroy_removes_order(): void
+    {
+        $order = $this->makeOrder();
+
+        $this->actingAs($this->user)
+            ->delete(route('restaurant.destroy', $order))
+            ->assertRedirect(route('restaurant.index'));
+
+        $this->assertSame(0, FoodOrder::count());
     }
 }

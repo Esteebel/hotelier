@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\PermissionName;
+use App\Models\Expense;
 use App\Models\HotelBranch;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -102,5 +103,82 @@ class ExpenseTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('expenses', 0);
+    }
+
+    private function makeExpense(array $overrides = []): Expense
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('expenses.store'), $this->payload());
+
+        return Expense::firstOrFail();
+    }
+
+    public function test_edit_page_loads_for_existing_expense(): void
+    {
+        $expense = $this->makeExpense();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->get(route('expenses.edit', $expense))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Expenses/Edit')
+                    ->where('expense.id', $expense->id),
+            );
+    }
+
+    public function test_update_persists_changes(): void
+    {
+        $expense = $this->makeExpense();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('expenses.update', $expense), $this->payload([
+                'amount' => 99000,
+                'category' => 'Maintenance',
+            ]))
+            ->assertRedirect(route('expenses.index'));
+
+        $this->assertDatabaseHas('expenses', [
+            'id' => $expense->id,
+            'amount' => 99000,
+            'category' => 'Maintenance',
+        ]);
+    }
+
+    public function test_complete_marks_pending_expense_completed(): void
+    {
+        $expense = Expense::create([
+            'expense_number' => 'EXP-TEST-PENDING',
+            'branch_id' => $this->branch->id,
+            'description' => 'Pending expense',
+            'amount' => 100,
+            'category' => 'Maintenance',
+            'expense_date' => '2026-10-10',
+            'status' => 'pending',
+            'created_by' => $this->user->id,
+        ]);
+
+        $this->actingAs($this->user)
+            ->post(route('expenses.complete', $expense))
+            ->assertRedirect(route('expenses.index'));
+
+        $this->assertDatabaseHas('expenses', [
+            'id' => $expense->id,
+            'status' => 'completed',
+        ]);
+    }
+
+    public function test_destroy_removes_expense(): void
+    {
+        $expense = $this->makeExpense();
+
+        $this->actingAs($this->user)
+            ->delete(route('expenses.destroy', $expense))
+            ->assertRedirect(route('expenses.index'));
+
+        $this->assertSame(0, Expense::count());
     }
 }

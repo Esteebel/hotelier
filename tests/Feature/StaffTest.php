@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\PermissionName;
 use App\Models\HotelBranch;
+use App\Models\Staff;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -102,5 +103,75 @@ class StaffTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('staff', 0);
+    }
+
+    private function makeStaff(array $overrides = [])
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('staff.store'), $this->payload($overrides));
+
+        return Staff::firstOrFail();
+    }
+
+    public function test_edit_page_loads_for_existing_staff(): void
+    {
+        $staff = $this->makeStaff();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->get(route('staff.edit', $staff))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Staff/Edit')
+                    ->where('staff.id', $staff->id),
+            );
+    }
+
+    public function test_update_persists_changes(): void
+    {
+        $staff = $this->makeStaff();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('staff.update', $staff), $this->payload([
+                'position' => 'Night Auditor',
+                'department' => 'Accounts',
+            ]))
+            ->assertRedirect(route('staff.index'));
+
+        $this->assertDatabaseHas('staff', [
+            'id' => $staff->id,
+            'position' => 'Night Auditor',
+            'department' => 'Accounts',
+        ]);
+    }
+
+    public function test_complete_reactivates_inactive_staff(): void
+    {
+        $staff = $this->makeStaff(['status' => 'inactive']);
+
+        $this->assertSame('inactive', $staff->status);
+
+        $this->actingAs($this->user)
+            ->post(route('staff.complete', $staff))
+            ->assertRedirect(route('staff.index'));
+
+        $this->assertDatabaseHas('staff', [
+            'id' => $staff->id,
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_destroy_removes_staff_member(): void
+    {
+        $staff = $this->makeStaff();
+
+        $this->actingAs($this->user)
+            ->delete(route('staff.destroy', $staff))
+            ->assertRedirect(route('staff.index'));
+
+        $this->assertSame(0, Staff::count());
     }
 }

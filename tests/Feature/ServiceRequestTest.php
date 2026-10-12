@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\PermissionName;
 use App\Models\HotelBranch;
 use App\Models\Room;
+use App\Models\ServiceRequest;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -105,5 +106,76 @@ class ServiceRequestTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('service_requests', 0);
+    }
+
+    private function makeService(): ServiceRequest
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('services.store'), $this->payload());
+
+        return ServiceRequest::firstOrFail();
+    }
+
+    public function test_edit_page_loads_for_existing_service(): void
+    {
+        $service = $this->makeService();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->get(route('services.edit', $service))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Services/Edit')
+                    ->where('service.id', $service->id),
+            );
+    }
+
+    public function test_update_persists_changes(): void
+    {
+        $service = $this->makeService();
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('services.update', $service), $this->payload([
+                'service_number' => $service->service_number,
+                'service_type' => 'laundry-pickup',
+                'priority' => 'high',
+            ]))
+            ->assertRedirect(route('services.index'));
+
+        $this->assertDatabaseHas('service_requests', [
+            'id' => $service->id,
+            'service_type' => 'laundry-pickup',
+            'priority' => 'high',
+        ]);
+    }
+
+    public function test_complete_marks_service_completed(): void
+    {
+        $service = $this->makeService();
+
+        $this->actingAs($this->user)
+            ->post(route('services.complete', $service))
+            ->assertRedirect(route('services.index'));
+
+        $this->assertDatabaseHas('service_requests', [
+            'id' => $service->id,
+            'status' => 'completed',
+            'assigned_to' => $this->user->id,
+        ]);
+        $this->assertNotNull($service->fresh()->completed_at);
+    }
+
+    public function test_destroy_removes_service(): void
+    {
+        $service = $this->makeService();
+
+        $this->actingAs($this->user)
+            ->delete(route('services.destroy', $service))
+            ->assertRedirect(route('services.index'));
+
+        $this->assertSame(0, ServiceRequest::count());
     }
 }
