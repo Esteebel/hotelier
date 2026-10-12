@@ -151,6 +151,51 @@ class ReservationCrudTest extends TestCase
         $this->assertEquals(150000, (float) $created->balance_due);
         $this->assertSame($room->id, (int) $created->room_id);
         $this->assertSame('reserved', $room->fresh()->status->value);
+        $this->assertSame('direct', $created->source);
+    }
+
+    public function test_reservation_source_is_persisted_when_provided(): void
+    {
+        $room = $this->makeRoom();
+
+        $this->actingAs($this->user)
+            ->post(route('reservations.store'), [
+                'branch_id' => $this->branch->id,
+                'guest_id' => $this->guest->id,
+                'room_id' => $room->id,
+                'check_in' => now()->addDays(2)->toDateString(),
+                'check_out' => now()->addDays(5)->toDateString(),
+                'adults' => 1,
+                'children' => 0,
+                'status' => 'confirmed',
+                'source' => 'phone',
+            ])
+            ->assertRedirect(route('reservations.index'));
+
+        $created = Reservation::query()->latest('id')->first();
+
+        $this->assertSame('phone', $created->source);
+    }
+
+    public function test_reservation_rejects_unknown_source(): void
+    {
+        $room = $this->makeRoom();
+
+        $this->actingAs($this->user)
+            ->post(route('reservations.store'), [
+                'branch_id' => $this->branch->id,
+                'guest_id' => $this->guest->id,
+                'room_id' => $room->id,
+                'check_in' => now()->addDays(2)->toDateString(),
+                'check_out' => now()->addDays(5)->toDateString(),
+                'adults' => 1,
+                'children' => 0,
+                'status' => 'confirmed',
+                'source' => 'carrier_pigeon',
+            ])
+            ->assertSessionHasErrors('source');
+
+        $this->assertDatabaseCount('reservations', 0);
     }
 
     public function test_reservation_store_rejects_overlapping_booking_on_same_room(): void

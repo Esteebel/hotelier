@@ -127,6 +127,35 @@ class DashboardController extends Controller
                 ->sortBy('type')
                 ->values();
 
+            // Trend data for the dashboard charts: completed revenue and
+            // occupancy share for each of the last 14 days.
+            $days = collect(range(13, 0))->map(fn (int $i) => $today->copy()->subDays($i));
+
+            $revenueDaily = $days
+                ->map(fn (Carbon $day) => [
+                    'label' => $day->format('d M'),
+                    'value' => round((float) $branchScope(Payment::query())
+                        ->where('status', 'completed')
+                        ->whereDate('paid_on', $day)
+                        ->sum('amount'), 2),
+                ])
+                ->values();
+
+            $occupancyDaily = $days
+                ->map(function (Carbon $day) use ($branchScope, $totalRooms) {
+                    $staying = $branchScope(Reservation::query())
+                        ->whereDate('check_in', '<=', $day)
+                        ->whereDate('check_out', '>', $day)
+                        ->whereIn('status', ['confirmed', 'checked_in', 'extended'])
+                        ->count();
+
+                    return [
+                        'label' => $day->format('d M'),
+                        'value' => $totalRooms > 0 ? round(($staying / $totalRooms) * 100, 1) : 0.0,
+                    ];
+                })
+                ->values();
+
             return [
                 'stats' => [
                     'total_rooms' => $totalRooms,
@@ -147,6 +176,17 @@ class DashboardController extends Controller
                 ],
                 'recent_reservations' => $recentReservations,
                 'room_type_breakdown' => $roomTypeBreakdown,
+                'charts' => [
+                    'revenue_daily' => $revenueDaily,
+                    'occupancy_daily' => $occupancyDaily,
+                    'room_statuses' => [
+                        ['label' => 'Occupied', 'value' => $occupiedRooms],
+                        ['label' => 'Reserved', 'value' => $reservedRooms],
+                        ['label' => 'Available', 'value' => $availableRooms],
+                        ['label' => 'Dirty', 'value' => $dirtyRooms],
+                        ['label' => 'Maintenance', 'value' => $maintenanceRooms],
+                    ],
+                ],
             ];
         })();
 

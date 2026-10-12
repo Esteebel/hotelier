@@ -15,6 +15,7 @@ class Room extends Model
 {
     /** @use HasFactory<RoomFactory> */
     use HasFactory, SoftDeletes;
+
     use HasOrganizationScope;
 
     protected $fillable = [
@@ -26,6 +27,7 @@ class Room extends Model
         'price',
         'status',
         'description',
+        'amenities',
         'is_active',
     ];
 
@@ -35,6 +37,7 @@ class Room extends Model
             'capacity' => 'integer',
             'price' => 'decimal:2',
             'status' => RoomStatus::class,
+            'amenities' => 'array',
             'is_active' => 'boolean',
         ];
     }

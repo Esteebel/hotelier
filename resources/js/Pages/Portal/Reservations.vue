@@ -2,6 +2,7 @@
 import { Head, Link, router } from "@inertiajs/vue3";
 import AppIcon from "@/Components/AppIcon.vue";
 import CustomerLayout from "@/Layouts/CustomerLayout.vue";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     guest: Object,
@@ -15,8 +16,6 @@ const statusStyles = {
     cancelled: "bg-rose-100 text-rose-700",
     pending: "bg-amber-100 text-amber-800",
 };
-
-const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
 
 const cancelReservation = (reservation) => {
     if (

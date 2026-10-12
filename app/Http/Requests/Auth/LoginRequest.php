@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Enums\UserStatus;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -52,7 +53,7 @@ class LoginRequest extends FormRequest
 
         $user = Auth::user();
 
-        if ($user && $user->status !== \App\Enums\UserStatus::Active) {
+        if ($user && $user->status !== UserStatus::Active) {
             // Credentials are valid but the account is deactivated: tear the
             // session back down before it can be used.
             Auth::logout();

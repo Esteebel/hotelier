@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\HotelStatus;
 use App\Enums\PermissionName;
 use App\Enums\RoomStatus;
 use App\Models\HotelBranch;
@@ -87,7 +88,7 @@ class RoomCrudTest extends TestCase
 
     public function test_room_create_without_active_branch_returns_validation_error(): void
     {
-        $this->branch->update(['status' => \App\Enums\HotelStatus::Inactive]);
+        $this->branch->update(['status' => HotelStatus::Inactive]);
 
         $this->actingAs($this->user)
             ->post(route('rooms.store'), $this->payload())
@@ -171,5 +172,40 @@ class RoomCrudTest extends TestCase
             ->withSession(['active_branch_id' => $this->branch->id])
             ->post(route('rooms.store'), $this->payload())
             ->assertForbidden();
+    }
+
+    public function test_room_amenities_are_persisted_as_an_array(): void
+    {
+        $amenities = ['WiFi', 'Air Conditioning', 'Balcony'];
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('rooms.store'), $this->payload(['amenities' => $amenities]))
+            ->assertRedirect(route('rooms.index'));
+
+        $room = Room::query()->where('room_number', 'A-101')->first();
+
+        $this->assertNotNull($room);
+        $this->assertSame($amenities, $room->amenities);
+    }
+
+    public function test_room_amenities_can_be_cleared_on_update(): void
+    {
+        $room = Room::factory()->create([
+            'branch_id' => $this->branch->id,
+            'room_type_id' => $this->roomType->id,
+            'room_number' => 'B-303',
+            'amenities' => ['WiFi'],
+        ]);
+
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->put(route('rooms.update', $room), $this->payload([
+                'room_number' => 'B-303',
+                'amenities' => [],
+            ]))
+            ->assertRedirect(route('rooms.index'));
+
+        $this->assertSame([], $room->fresh()->amenities);
     }
 }

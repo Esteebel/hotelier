@@ -11,6 +11,7 @@ import SelectInput from "@/Components/SelectInput.vue";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import { usePermissions } from "@/Composables/usePermissions";
+import { formatMoney as toMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     payments: { type: Object, required: true },
@@ -107,11 +108,7 @@ const statusBadge = (s) =>
         void: "bg-gray-100 text-gray-500 ring-gray-500/20",
     })[s] ?? "bg-gray-50 text-gray-700 ring-gray-600/20";
 
-const money = (n) =>
-    Number(n ?? 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+const money = (n) => toMoney(n, { decimals: 2 });
 
 onMounted(() => {
     if (props.filters.search) search.value = props.filters.search;

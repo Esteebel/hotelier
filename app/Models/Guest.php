@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use App\Enums\GuestStatus;
-use App\Enums\ReservationStatus;
-use App\Support\ContextualBranch;
 use App\Models\Concerns\HasOrganizationScope;
+use App\Support\ContextualBranch;
 use Database\Factories\GuestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +16,7 @@ class Guest extends Model
 {
     /** @use HasFactory<GuestFactory> */
     use HasFactory, SoftDeletes;
+
     use HasOrganizationScope;
 
     protected $fillable = [

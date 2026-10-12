@@ -9,6 +9,7 @@ import SecondaryButton from "@/Components/SecondaryButton.vue";
 import SelectInput from "@/Components/SelectInput.vue";
 import TextInput from "@/Components/TextInput.vue";
 import { usePermissions } from "@/Composables/usePermissions";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     rooms: {
@@ -31,14 +32,9 @@ const roomToDelete = ref(null);
 const deleting = useForm({});
 const { hasPermission } = usePermissions();
 
-const currencyFormatter = new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-});
-
 const formatPrice = (price) => {
     if (price === null || price === undefined || price === "") return "—";
-    return currencyFormatter.format(price);
+    return formatMoney(price, { decimals: 2 });
 };
 
 const reload = (preserveKey = false) => {

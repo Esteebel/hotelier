@@ -10,6 +10,7 @@ use App\Models\Notification;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
+use App\Models\User;
 use App\Services\ReservationService;
 use App\Support\ContextualBranch;
 use App\Support\GuestNotifier;
@@ -190,6 +191,7 @@ class PortalController extends Controller
                 'status' => $room->status->value,
                 'status_label' => $room->status_label,
                 'description' => $room->description,
+                'amenities' => $room->amenities ?? [],
                 'room_type' => $room->roomType?->only(['id', 'name']),
                 'total' => round(
                     $nights * (float) ($room->price ?? $room->roomType?->base_price ?? 0),
@@ -262,6 +264,7 @@ class PortalController extends Controller
                 'adults' => (int) $data['adults'],
                 'children' => $children,
                 'status' => 'confirmed',
+                'source' => 'website',
                 'special_requests' => $data['special_requests'] ?? null,
                 'created_by' => $user->id,
             ]);
@@ -398,7 +401,7 @@ class PortalController extends Controller
         return back();
     }
 
-    private function roomBelongsToGuest(\App\Models\User $user, int $roomId): bool
+    private function roomBelongsToGuest(User $user, int $roomId): bool
     {
         if (! $user->guest_id) {
             return false;
@@ -415,7 +418,7 @@ class PortalController extends Controller
             ->exists();
     }
 
-    private function ordersQuery(\App\Models\User $user)
+    private function ordersQuery(User $user)
     {
         return FoodOrder::query()->where(function ($query) use ($user) {
             $query->when(

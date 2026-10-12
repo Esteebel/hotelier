@@ -9,6 +9,7 @@ import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextAreaInput from "@/Components/TextAreaInput.vue";
 import TextInput from "@/Components/TextInput.vue";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     guest: Object,
@@ -68,8 +69,6 @@ const submit = () => {
         },
     });
 };
-
-const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
 </script>
 
 <template>
@@ -278,6 +277,19 @@ const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
                     >
                         {{ room.description }}
                     </p>
+
+                    <div
+                        v-if="room.amenities?.length"
+                        class="mt-3 flex flex-wrap gap-1.5"
+                    >
+                        <span
+                            v-for="amenity in room.amenities"
+                            :key="amenity"
+                            class="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700"
+                        >
+                            {{ amenity }}
+                        </span>
+                    </div>
 
                     <dl
                         class="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 text-sm"

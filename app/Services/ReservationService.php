@@ -9,6 +9,7 @@ use App\Events\ReservationCreated;
 use App\Models\Reservation;
 use App\Models\Room;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ReservationService
@@ -242,7 +243,7 @@ class ReservationService
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, int|null>
+     * @return Collection<int, int|null>
      */
     private function blockingRoomIds(string $checkIn, string $checkOut, ?int $excludeReservationId = null)
     {

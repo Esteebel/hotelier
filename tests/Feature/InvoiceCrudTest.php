@@ -5,8 +5,12 @@ namespace Tests\Feature;
 use App\Enums\PermissionName;
 use App\Models\Guest;
 use App\Models\HotelBranch;
+use App\Models\HotelSetting;
 use App\Models\Invoice;
+use App\Models\Reservation;
 use App\Models\User;
+use App\Services\InvoiceService;
+use App\Support\Settings;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -215,5 +219,53 @@ class InvoiceCrudTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('invoices', ['id' => $invoice->id]);
+    }
+
+    public function test_generate_applies_the_configured_tax_rate(): void
+    {
+        HotelSetting::updateOrCreate(['key' => 'tax_rate'], ['value' => 10]);
+        Settings::forget();
+
+        $reservation = Reservation::create([
+            'branch_id' => $this->branch->id,
+            'guest_id' => $this->guest->id,
+            'reservation_number' => 'HQ-RSV-0000009',
+            'check_in' => now()->addDay()->toDateString(),
+            'check_out' => now()->addDays(3)->toDateString(),
+            'adults' => 2,
+            'children' => 0,
+            'status' => 'confirmed',
+            'total_amount' => 100000,
+            'balance_due' => 100000,
+        ]);
+
+        $invoice = app(InvoiceService::class)->generate($reservation, [
+            ['description' => 'Room charge', 'amount' => 100000],
+        ]);
+
+        $this->assertEquals(10000, (float) $invoice->tax);
+        $this->assertEquals(110000, (float) $invoice->total);
+    }
+
+    public function test_generate_defaults_to_the_standard_tax_rate(): void
+    {
+        $reservation = Reservation::create([
+            'branch_id' => $this->branch->id,
+            'guest_id' => $this->guest->id,
+            'reservation_number' => 'HQ-RSV-0000010',
+            'check_in' => now()->addDay()->toDateString(),
+            'check_out' => now()->addDays(3)->toDateString(),
+            'adults' => 2,
+            'children' => 0,
+            'status' => 'confirmed',
+            'total_amount' => 100000,
+            'balance_due' => 100000,
+        ]);
+
+        $invoice = app(InvoiceService::class)->generate($reservation, [
+            ['description' => 'Room charge', 'amount' => 100000],
+        ]);
+
+        $this->assertEquals(7500, (float) $invoice->tax);
     }
 }

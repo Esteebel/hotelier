@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Payment;
 use App\Support\ContextualBranch;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -44,7 +45,7 @@ class PaymentRequest extends FormRequest
         }
 
         if (! $this->has('payment_number')) {
-            $count = \App\Models\Payment::withTrashed()->count() + 1;
+            $count = Payment::withTrashed()->count() + 1;
             $branchCode = ContextualBranch::current()?->code ?? 'HQ';
             $merge['payment_number'] = $branchCode.'-PAY-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
         }

@@ -1,12 +1,16 @@
 <script setup>
+import { computed } from "vue";
 import { Head, Link } from "@inertiajs/vue3";
 import AppIcon from "@/Components/AppIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import ChartCanvas from "@/Components/ChartCanvas.vue";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     stats: Object,
     recent_reservations: Array,
     room_type_breakdown: Array,
+    charts: { type: Object, default: () => ({}) },
     activeBranch: Object,
     scopeLabel: String,
 });
@@ -17,6 +21,86 @@ const today = new Date().toLocaleDateString("en-GB", {
     month: "long",
     year: "numeric",
 });
+
+const revenueChartData = computed(() => ({
+    labels: (props.charts?.revenue_daily ?? []).map((d) => d.label),
+    datasets: [
+        {
+            label: "Revenue",
+            data: (props.charts?.revenue_daily ?? []).map((d) => d.value),
+            borderColor: "#4f46e5",
+            backgroundColor: "rgba(79, 70, 229, 0.12)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 2,
+        },
+    ],
+}));
+
+const occupancyChartData = computed(() => ({
+    labels: (props.charts?.occupancy_daily ?? []).map((d) => d.label),
+    datasets: [
+        {
+            label: "Occupancy %",
+            data: (props.charts?.occupancy_daily ?? []).map((d) => d.value),
+            borderColor: "#10b981",
+            backgroundColor: "rgba(16, 185, 129, 0.12)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 2,
+        },
+    ],
+}));
+
+const roomStatusChartData = computed(() => {
+    const statuses = props.charts?.room_statuses ?? [];
+
+    return {
+        labels: statuses.map((s) => s.label),
+        datasets: [
+            {
+                data: statuses.map((s) => s.value),
+                backgroundColor: [
+                    "#4f46e5",
+                    "#f59e0b",
+                    "#10b981",
+                    "#6b7280",
+                    "#ef4444",
+                ],
+                borderWidth: 0,
+            },
+        ],
+    };
+});
+
+const hasRoomData = computed(() =>
+    (props.charts?.room_statuses ?? []).some((s) => s.value > 0),
+);
+
+const axisOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+        x: {
+            grid: { display: false },
+            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 },
+        },
+        y: { beginAtZero: true, grid: { color: "#f3f4f6" } },
+    },
+};
+
+const donutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: "bottom",
+            labels: { boxWidth: 12, font: { size: 11 } },
+        },
+    },
+    cutout: "65%",
+};
 
 const summaryCards = [
     {
@@ -45,7 +129,7 @@ const summaryCards = [
     },
     {
         label: "Revenue Today",
-        value: formatCurrency(props.stats.today_revenue),
+        value: formatMoney(props.stats.today_revenue, { decimals: 0 }),
         detail: "confirmed payments",
         icon: "banknote",
         accent: "bg-rose-100 text-rose-700",
@@ -80,26 +164,19 @@ const secondaryCards = [
     },
     {
         label: "Month Revenue",
-        value: formatCurrency(props.stats.month_revenue),
+        value: formatMoney(props.stats.month_revenue, { decimals: 0 }),
         icon: "trendingUp",
         href: route("payments.index", { status: "completed" }),
     },
     {
         label: "Outstanding Invoices",
-        value: formatCurrency(props.stats.outstanding_invoices),
+        value: formatMoney(props.stats.outstanding_invoices, {
+            decimals: 0,
+        }),
         icon: "fileText",
         href: route("invoices.index"),
     },
 ];
-
-function formatCurrency(amount) {
-    return new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(amount || 0);
-}
 </script>
 
 <template>
@@ -175,6 +252,67 @@ function formatCurrency(amount) {
                     </p>
                     <p class="mt-1 text-xs text-gray-500">{{ item.label }}</p>
                 </Link>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div
+                    class="rounded-xl border border-gray-200 bg-white shadow-sm"
+                >
+                    <div
+                        class="border-b border-gray-100 px-5 py-4 text-sm font-semibold text-gray-900"
+                    >
+                        Revenue · last 14 days
+                    </div>
+                    <div class="h-56 p-4">
+                        <ChartCanvas
+                            type="line"
+                            :data="revenueChartData"
+                            :options="axisOptions"
+                        />
+                    </div>
+                </div>
+
+                <div
+                    class="rounded-xl border border-gray-200 bg-white shadow-sm"
+                >
+                    <div
+                        class="border-b border-gray-100 px-5 py-4 text-sm font-semibold text-gray-900"
+                    >
+                        Occupancy · last 14 days
+                    </div>
+                    <div class="h-56 p-4">
+                        <ChartCanvas
+                            type="line"
+                            :data="occupancyChartData"
+                            :options="axisOptions"
+                        />
+                    </div>
+                </div>
+
+                <div
+                    class="rounded-xl border border-gray-200 bg-white shadow-sm"
+                >
+                    <div
+                        class="border-b border-gray-100 px-5 py-4 text-sm font-semibold text-gray-900"
+                    >
+                        Room status
+                    </div>
+                    <div class="h-56 p-4">
+                        <div
+                            v-if="!hasRoomData"
+                            class="flex h-full items-center justify-center text-sm text-gray-400"
+                        >
+                            No rooms yet
+                        </div>
+                        <ChartCanvas
+                            v-else
+                            type="doughnut"
+                            :data="roomStatusChartData"
+                            :options="donutOptions"
+                        />
+                    </div>
+                </div>
             </div>
 
             <!-- Room Type Breakdown -->

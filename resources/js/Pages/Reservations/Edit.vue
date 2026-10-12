@@ -25,6 +25,7 @@ const form = useForm({
     children: props.reservation.children,
     notes: props.reservation.notes,
     status: props.reservation.status,
+    source: props.reservation.source ?? "direct",
 });
 
 const submit = () => {
@@ -108,6 +109,26 @@ const submit = () => {
                             <option value="cancelled">Cancelled</option>
                             <option value="no_show">No Show</option>
                         </SelectInput>
+                    </div>
+
+                    <div>
+                        <InputLabel value="Source" />
+                        <SelectInput
+                            v-model="form.source"
+                            class="mt-1 block w-full"
+                        >
+                            <option value="direct">Direct</option>
+                            <option value="phone">Phone</option>
+                            <option value="website">Website</option>
+                            <option value="walk_in">Walk-in</option>
+                            <option value="email">Email</option>
+                            <option value="referral">Referral</option>
+                            <option value="ota">OTA / Booking site</option>
+                        </SelectInput>
+                        <InputError
+                            class="mt-2"
+                            :message="form.errors.source"
+                        />
                     </div>
 
                     <div>

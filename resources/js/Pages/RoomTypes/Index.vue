@@ -8,6 +8,7 @@ import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
 import { usePermissions } from "@/Composables/usePermissions";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     roomTypes: {
@@ -71,11 +72,7 @@ const destroyRoomType = () => {
     });
 };
 
-const formatPrice = (price) =>
-    `₦${Number(price).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })}`;
+const formatPrice = (price) => formatMoney(price, { decimals: 2 });
 </script>
 
 <template>

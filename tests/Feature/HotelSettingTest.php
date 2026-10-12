@@ -19,6 +19,7 @@ class HotelSettingTest extends TestCase
     private const SETTINGS = [
         'brand_name' => 'Grand Heritage Hotel',
         'default_currency' => 'USD',
+        'tax_rate' => 7.5,
         'check_in_time' => '15:00',
         'check_out_time' => '11:00',
         'timezone' => 'Europe/London',
@@ -50,6 +51,7 @@ class HotelSettingTest extends TestCase
                     ->component('Settings/Index')
                     ->where('settings.brand_name', 'Hotel Management System')
                     ->where('settings.default_currency', 'NGN')
+                    ->where('settings.tax_rate', 7.5)
                     ->where('settings.check_in_time', '14:00')
                     ->where('settings.check_out_time', '12:00')
                     ->where('settings.timezone', 'Africa/Lagos')
@@ -89,6 +91,7 @@ class HotelSettingTest extends TestCase
                     ->component('Settings/Index')
                     ->where('settings.brand_name', 'Grand Heritage Hotel')
                     ->where('settings.default_currency', 'USD')
+                    ->where('settings.tax_rate', 7.5)
                     ->where('settings.check_in_time', '15:00')
                     ->where('settings.check_out_time', '11:00')
                     ->where('settings.timezone', 'Europe/London')
@@ -119,5 +122,27 @@ class HotelSettingTest extends TestCase
         $this->actingAs($this->user)
             ->put(route('settings.update'), ['settings' => $payload])
             ->assertSessionHasErrors('settings.check_in_time');
+    }
+
+    public function test_tax_rate_out_of_range_is_rejected(): void
+    {
+        $payload = self::SETTINGS;
+        $payload['tax_rate'] = 150;
+
+        $this->actingAs($this->user)
+            ->put(route('settings.update'), ['settings' => $payload])
+            ->assertSessionHasErrors('settings.tax_rate');
+    }
+
+    public function test_shared_page_props_expose_settings(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->where('settings.default_currency', 'NGN')
+                    ->where('settings.tax_rate', 7.5),
+            );
     }
 }

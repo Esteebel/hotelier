@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\PaymentStatus;
 use App\Events\PaymentReceived;
 use App\Http\Requests\PaymentRequest;
+use App\Models\Guest;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reservation;
@@ -243,11 +244,11 @@ class PaymentController extends Controller
      */
     private function guestOptions(): array
     {
-        return \App\Models\Guest::query()
+        return Guest::query()
             ->where('status', 'active')
             ->orderBy('first_name')
             ->get(['id', 'first_name', 'last_name'])
-            ->map(fn (\App\Models\Guest $guest) => $guest->only(['id', 'full_name']))
+            ->map(fn (Guest $guest) => $guest->only(['id', 'full_name']))
             ->all();
     }
 }

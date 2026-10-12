@@ -4,6 +4,7 @@ import AppIcon from "@/Components/AppIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Link, router } from "@inertiajs/vue3";
 import { usePermissions } from "@/Composables/usePermissions";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     checkouts: Object,
@@ -26,10 +27,7 @@ const statusLabels = {
 };
 
 function formatCurrency(amount) {
-    return new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-    }).format(amount || 0);
+    return formatMoney(amount, { decimals: 2 });
 }
 
 function applyFilters() {

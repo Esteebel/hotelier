@@ -8,6 +8,7 @@ import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
 import { usePermissions } from "@/Composables/usePermissions";
+import { formatMoney as toMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     invoices: { type: Object, required: true },
@@ -76,11 +77,7 @@ const statusLabel = (s) =>
         void: "Void",
     })[s] ?? s;
 
-const formatMoney = (n) =>
-    Number(n ?? 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
+const formatMoney = (n) => toMoney(n, { decimals: 2 });
 </script>
 
 <template>

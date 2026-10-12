@@ -2,6 +2,7 @@
 import { Head, Link } from "@inertiajs/vue3";
 import AppIcon from "@/Components/AppIcon.vue";
 import CustomerLayout from "@/Layouts/CustomerLayout.vue";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     orders: Object,
@@ -14,8 +15,6 @@ const statusStyles = {
     completed: "bg-gray-100 text-gray-600",
     cancelled: "bg-rose-100 text-rose-700",
 };
-
-const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
 </script>
 
 <template>

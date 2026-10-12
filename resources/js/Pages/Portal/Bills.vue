@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { Head, Link } from "@inertiajs/vue3";
 import CustomerLayout from "@/Layouts/CustomerLayout.vue";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     guest: Object,
@@ -17,8 +18,6 @@ const invoiceStatusStyles = {
     unpaid: "bg-rose-100 text-rose-700",
     void: "bg-gray-100 text-gray-600",
 };
-
-const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
 </script>
 
 <template>

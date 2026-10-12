@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { formatMoney as formatPrice } from "@/Utils/format.js";
 
 const props = defineProps({
     menuItems: {
@@ -47,8 +48,6 @@ const total = computed(() =>
 const selectedCount = computed(() =>
     props.modelValue.reduce((sum, row) => sum + row.quantity, 0),
 );
-
-const formatPrice = (price) => `₦${Number(price).toLocaleString()}`;
 </script>
 
 <template>

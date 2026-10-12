@@ -8,6 +8,7 @@ import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
 import { usePermissions } from "@/Composables/usePermissions";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     reservations: {
@@ -208,6 +209,11 @@ const statusBadge = (res) => {
                             >
                                 Status
                             </th>
+                            <th
+                                class="hidden px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 lg:table-cell"
+                            >
+                                Source
+                            </th>
                             <th class="px-5 py-3"></th>
                         </tr>
                     </thead>
@@ -251,11 +257,7 @@ const statusBadge = (res) => {
                             <td
                                 class="whitespace-nowrap px-5 py-4 text-sm font-medium text-gray-900"
                             >
-                                {{
-                                    Number(
-                                        reservation.total_amount ?? 0,
-                                    ).toLocaleString()
-                                }}
+                                {{ formatMoney(reservation.total_amount) }}
                             </td>
                             <td class="whitespace-nowrap px-5 py-4">
                                 <span
@@ -264,6 +266,11 @@ const statusBadge = (res) => {
                                 >
                                     {{ reservation.status_label }}
                                 </span>
+                            </td>
+                            <td
+                                class="hidden whitespace-nowrap px-5 py-4 text-sm text-gray-600 lg:table-cell"
+                            >
+                                {{ reservation.source_label ?? "—" }}
                             </td>
                             <td class="whitespace-nowrap px-5 py-4 text-right">
                                 <div
@@ -321,7 +328,7 @@ const statusBadge = (res) => {
                             </td>
                         </tr>
                         <tr v-if="!reservations.data.length">
-                            <td colspan="9" class="px-5 py-14 text-center">
+                            <td colspan="10" class="px-5 py-14 text-center">
                                 <p class="text-sm font-medium text-gray-900">
                                     No reservations found
                                 </p>

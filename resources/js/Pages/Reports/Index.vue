@@ -7,6 +7,7 @@ import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     metrics: { type: Object, required: true },
@@ -48,14 +49,14 @@ const metricCards = [
         key: "revenue_paid",
         label: "Revenue (Paid)",
         icon: "card",
-        format: (v) => Number(v ?? 0).toLocaleString(),
+        format: (v) => formatMoney(v, { decimals: 0 }),
         href: route("payments.index", { status: "completed" }),
     },
     {
         key: "revenue_pending",
         label: "Revenue (Pending)",
         icon: "banknote",
-        format: (v) => Number(v ?? 0).toLocaleString(),
+        format: (v) => formatMoney(v, { decimals: 0 }),
         href: route("payments.index", { status: "pending" }),
     },
     {
@@ -97,7 +98,7 @@ const metricCards = [
         key: "invoices_outstanding",
         label: "Invoices Outstanding",
         icon: "receipt",
-        format: (v) => Number(v ?? 0).toLocaleString(),
+        format: (v) => formatMoney(v, { decimals: 0 }),
         href: route("invoices.index"),
     },
 ];

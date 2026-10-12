@@ -59,4 +59,21 @@ class DashboardTest extends TestCase
                     ->where('activeBranch', null),
             );
     }
+
+    public function test_dashboard_includes_chart_series(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Dashboard')
+                    ->has('charts.revenue_daily', 14)
+                    ->has('charts.occupancy_daily', 14)
+                    ->has('charts.room_statuses', 5)
+                    ->where('charts.revenue_daily.0.value', 0),
+            );
+    }
 }

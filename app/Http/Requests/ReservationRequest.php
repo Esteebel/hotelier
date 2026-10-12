@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\ReservationSource;
 use App\Models\Reservation;
 use App\Support\ContextualBranch;
 use Illuminate\Foundation\Http\FormRequest;
@@ -46,6 +47,7 @@ class ReservationRequest extends FormRequest
             'status' => ['required', Rule::in([
                 'confirmed', 'checked_in', 'extended', 'checked_out', 'cancelled', 'no_show',
             ])],
+            'source' => ['sometimes', 'string', Rule::enum(ReservationSource::class)],
         ];
     }
 

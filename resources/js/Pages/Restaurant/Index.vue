@@ -4,6 +4,7 @@ import AppIcon from "@/Components/AppIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Link, router } from "@inertiajs/vue3";
 import { usePermissions } from "@/Composables/usePermissions";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     orders: Object,
@@ -171,11 +172,7 @@ function applyFilters() {
                                     <td
                                         class="whitespace-nowrap px-6 py-4 text-sm text-gray-500"
                                     >
-                                        ₦{{
-                                            Number(
-                                                order.total_amount,
-                                            ).toLocaleString()
-                                        }}
+                                        {{ formatMoney(order.total_amount) }}
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4">
                                         <span

@@ -7,6 +7,7 @@ import SecondaryButton from "@/Components/SecondaryButton.vue";
 import SelectInput from "@/Components/SelectInput.vue";
 import TextAreaInput from "@/Components/TextAreaInput.vue";
 import TextInput from "@/Components/TextInput.vue";
+import { currentCurrency } from "@/Utils/format.js";
 
 const props = defineProps({
     room: {
@@ -19,6 +20,21 @@ const props = defineProps({
     },
 });
 
+const currency = currentCurrency();
+
+const AMENITIES = [
+    "WiFi",
+    "Air Conditioning",
+    "TV",
+    "Mini Fridge",
+    "Balcony",
+    "Safe",
+    "Coffee Maker",
+    "Bathtub",
+    "Work Desk",
+    "Sofa",
+];
+
 const form = useForm({
     room_type_id: props.room?.room_type_id ?? "",
     room_number: props.room?.room_number ?? "",
@@ -27,8 +43,16 @@ const form = useForm({
     price: props.room?.price ?? "",
     status: props.room?.status ?? "available",
     description: props.room?.description ?? "",
+    amenities: props.room?.amenities ?? [],
     is_active: props.room?.is_active ?? true,
 });
+
+const toggleAmenity = (amenity) => {
+    const current = form.amenities ?? [];
+    form.amenities = current.includes(amenity)
+        ? current.filter((item) => item !== amenity)
+        : [...current, amenity];
+};
 
 const submit = () => {
     if (props.room) {
@@ -122,7 +146,7 @@ const cancel = () => {
                 </div>
 
                 <div>
-                    <InputLabel value="Rate (₦ / night)" />
+                    <InputLabel :value="`Rate (${currency} / night)`" />
                     <TextInput
                         v-model="form.price"
                         type="number"
@@ -163,6 +187,28 @@ const cancel = () => {
                         class="mt-2"
                         :message="form.errors.description"
                     />
+                </div>
+
+                <div class="sm:col-span-2">
+                    <InputLabel value="Amenities" />
+                    <div
+                        class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+                    >
+                        <label
+                            v-for="amenity in AMENITIES"
+                            :key="amenity"
+                            class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:border-indigo-300"
+                        >
+                            <input
+                                type="checkbox"
+                                class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                :checked="form.amenities?.includes(amenity)"
+                                @change="toggleAmenity(amenity)"
+                            />
+                            <span>{{ amenity }}</span>
+                        </label>
+                    </div>
+                    <InputError class="mt-2" :message="form.errors.amenities" />
                 </div>
 
                 <div class="sm:col-span-2">

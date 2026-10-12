@@ -8,6 +8,7 @@ import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
 import { usePermissions } from "@/Composables/usePermissions";
+import { formatMoney as formatPrice } from "@/Utils/format.js";
 
 const props = defineProps({
     menuItems: {
@@ -68,8 +69,6 @@ const destroyItem = () => {
         },
     });
 };
-
-const formatPrice = (price) => `₦${Number(price).toLocaleString()}`;
 </script>
 
 <template>

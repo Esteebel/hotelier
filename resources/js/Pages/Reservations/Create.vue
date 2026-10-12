@@ -26,6 +26,7 @@ const form = useForm({
     children: 0,
     notes: "",
     status: "confirmed",
+    source: "direct",
 });
 
 const submit = () => {
@@ -81,7 +82,7 @@ const submit = () => {
                             v-model="form.room_id"
                             class="mt-1 block w-full"
                         >
-                            <option value="">No room (on request)</option>
+                            <option value="">Select a room…</option>
                             <option
                                 v-for="room in rooms"
                                 :key="room.id"
@@ -108,6 +109,26 @@ const submit = () => {
                             <option value="cancelled">Cancelled</option>
                             <option value="no_show">No Show</option>
                         </SelectInput>
+                    </div>
+
+                    <div>
+                        <InputLabel value="Source" />
+                        <SelectInput
+                            v-model="form.source"
+                            class="mt-1 block w-full"
+                        >
+                            <option value="direct">Direct</option>
+                            <option value="phone">Phone</option>
+                            <option value="website">Website</option>
+                            <option value="walk_in">Walk-in</option>
+                            <option value="email">Email</option>
+                            <option value="referral">Referral</option>
+                            <option value="ota">OTA / Booking site</option>
+                        </SelectInput>
+                        <InputError
+                            class="mt-2"
+                            :message="form.errors.source"
+                        />
                     </div>
 
                     <div>

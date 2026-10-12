@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Invoice;
 use App\Models\Reservation;
+use App\Support\ContextualBranch;
+use App\Support\Settings;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceService
@@ -11,11 +13,13 @@ class InvoiceService
     /**
      * Generate an invoice for a reservation.
      *
-     * Tax is caller-supplied (no hardcoded rate — tax config lands with the
-     * settings module).
+     * Tax defaults to the configured settings tax_rate (percentage) unless a
+     * caller supplies its own rate.
      */
-    public function generate(Reservation $reservation, array $lineItems = [], float $taxRate = 0.0, ?int $createdBy = null): Invoice
+    public function generate(Reservation $reservation, array $lineItems = [], ?float $taxRate = null, ?int $createdBy = null): Invoice
     {
+        $taxRate ??= $this->taxRate();
+
         return DB::transaction(function () use ($reservation, $lineItems, $taxRate, $createdBy) {
             $subtotal = collect($lineItems)->sum('amount');
             $tax = round($subtotal * $taxRate, 2);
@@ -104,9 +108,17 @@ class InvoiceService
 
     private function nextInvoiceNumber(int $branchId): string
     {
-        $branchCode = \App\Support\ContextualBranch::current()?->code ?? 'HQ';
+        $branchCode = ContextualBranch::current()?->code ?? 'HQ';
         $count = Invoice::withTrashed()->where('branch_id', $branchId)->count() + 1;
 
         return $branchCode.'-INV-'.str_pad((string) $count, 7, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Configured tax rate as a decimal fraction (settings store a percentage).
+     */
+    private function taxRate(): float
+    {
+        return ((float) Settings::get('tax_rate', 0)) / 100;
     }
 }

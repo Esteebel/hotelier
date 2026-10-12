@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\ReservationCancelled;
+use App\Enums\ReservationSource;
 use App\Enums\RoomStatus;
+use App\Events\ReservationCancelled;
 use App\Http\Requests\ReservationRequest;
 use App\Models\Guest;
 use App\Models\Reservation;
@@ -39,7 +40,7 @@ class ReservationController extends Controller
                         ->where('first_name', 'like', '%'.$request->string('search').'%')
                         ->orWhere('last_name', 'like', '%'.$request->string('search').'%')
                         ->orWhere('email', 'like', '%'.$request->string('search').'%'))
-                    ->orWhere('reservation_number', 'like', '%'.$request->string('search').'%'),
+                        ->orWhere('reservation_number', 'like', '%'.$request->string('search').'%'),
                 ),
             )
             ->latest()
@@ -58,6 +59,8 @@ class ReservationController extends Controller
                     'status' => $reservation->status->value,
                     'status_label' => $reservation->status_label,
                     'badge_class' => $reservation->status->badgeClass(),
+                    'source' => $reservation->source,
+                    'source_label' => ReservationSource::labels()[$reservation->source] ?? $reservation->source,
                 ],
             );
 
@@ -129,6 +132,7 @@ class ReservationController extends Controller
                 'notes' => $reservation->special_requests,
                 'special_requests' => $reservation->special_requests,
                 'status' => $reservation->status->value,
+                'source' => $reservation->source,
             ],
             'guests' => $this->guestOptions(),
             'rooms' => $this->roomOptions(),

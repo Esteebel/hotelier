@@ -5,38 +5,20 @@ namespace App\Http\Controllers;
 use App\Enums\PermissionName;
 use App\Http\Requests\UpdateSettingRequest;
 use App\Models\HotelSetting;
+use App\Support\Settings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SettingController extends Controller
 {
-    private const DEFAULTS = [
-        'brand_name' => 'Hotel Management System',
-        'default_currency' => 'NGN',
-        'check_in_time' => '14:00',
-        'check_out_time' => '12:00',
-        'timezone' => 'Africa/Lagos',
-        'default_page_size' => 10,
-    ];
-
     public function index(Request $request): Response
     {
         $this->authorizeManage($request);
 
-        $settings = Cache::remember('hotel.settings', now()->addMinutes(5), function () {
-            $saved = HotelSetting::query()
-                ->get(['key', 'value'])
-                ->mapWithKeys(fn (HotelSetting $setting) => [$setting->key => $setting->value]);
-
-            return collect(self::DEFAULTS)
-                ->map(fn (mixed $default, string $key) => $saved[$key] ?? $default);
-        });
-
         return Inertia::render('Settings/Index', [
-            'settings' => $settings,
+            'settings' => Settings::all(),
         ]);
     }
 
@@ -51,7 +33,7 @@ class SettingController extends Controller
             );
         }
 
-        Cache::forget('hotel.settings');
+        Settings::forget();
 
         return redirect()
             ->route('settings.index')

@@ -2,6 +2,12 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\PermissionName;
+use App\Enums\ReservationStatus;
+use App\Enums\RoomStatus;
+use App\Models\Reservation;
+use App\Models\Room;
+use App\Support\ContextualBranch;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -11,7 +17,7 @@ class RoomTransferRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user()?->hasPermissionTo(
-            \App\Enums\PermissionName::ManageRoomTransfers->value,
+            PermissionName::ManageRoomTransfers->value,
         ) ?? false;
     }
 
@@ -36,9 +42,9 @@ class RoomTransferRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function ($validator) {
-            $from = \App\Models\Room::withoutGlobalScope('organization')
+            $from = Room::withoutGlobalScope('organization')
                 ->find($this->input('from_room_id'));
-            $to = \App\Models\Room::withoutGlobalScope('organization')
+            $to = Room::withoutGlobalScope('organization')
                 ->find($this->input('to_room_id'));
 
             if ($from && $to && (int) $from->branch_id !== (int) $to->branch_id) {
@@ -48,7 +54,7 @@ class RoomTransferRequest extends FormRequest
                 );
             }
 
-            $activeBranch = \App\Support\ContextualBranch::id();
+            $activeBranch = ContextualBranch::id();
             if ($from && $activeBranch && (int) $from->branch_id !== (int) $activeBranch) {
                 $validator->errors()->add(
                     'from_room_id',
@@ -57,10 +63,10 @@ class RoomTransferRequest extends FormRequest
             }
 
             if ($to && in_array($to->status->value, [
-                \App\Enums\RoomStatus::Occupied->value,
-                \App\Enums\RoomStatus::Reserved->value,
-                \App\Enums\RoomStatus::Maintenance->value,
-                \App\Enums\RoomStatus::OutOfService->value,
+                RoomStatus::Occupied->value,
+                RoomStatus::Reserved->value,
+                RoomStatus::Maintenance->value,
+                RoomStatus::OutOfService->value,
             ], true)) {
                 $validator->errors()->add(
                     'to_room_id',
@@ -69,12 +75,12 @@ class RoomTransferRequest extends FormRequest
             }
 
             if ($this->filled('reservation_id')) {
-                $reservation = \App\Models\Reservation::withoutGlobalScope('branch')
+                $reservation = Reservation::withoutGlobalScope('branch')
                     ->find($this->input('reservation_id'));
 
                 if ($reservation && ! in_array($reservation->status->value, [
-                    \App\Enums\ReservationStatus::CheckedIn->value,
-                    \App\Enums\ReservationStatus::Extended->value,
+                    ReservationStatus::CheckedIn->value,
+                    ReservationStatus::Extended->value,
                 ], true)) {
                     $validator->errors()->add(
                         'reservation_id',

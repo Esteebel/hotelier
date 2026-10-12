@@ -3,10 +3,13 @@
 namespace App\Http\Requests;
 
 use App\Enums\PermissionName;
+use App\Enums\ReservationStatus;
 use App\Models\Checkout;
+use App\Models\Reservation;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class CheckoutRequest extends FormRequest
 {
@@ -52,16 +55,16 @@ class CheckoutRequest extends FormRequest
         ];
     }
 
-    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function (\Illuminate\Validation\Validator $validator): void {
+        $validator->after(function (Validator $validator): void {
             // Coherence guards only apply when creating a check-out; edits of
             // an existing check-out run against an already checked-out stay.
             if (! $this->isMethod('post')) {
                 return;
             }
 
-            $reservation = \App\Models\Reservation::withoutGlobalScope('branch')
+            $reservation = Reservation::withoutGlobalScope('branch')
                 ->find($this->input('reservation_id'));
 
             if (! $reservation) {
@@ -73,8 +76,8 @@ class CheckoutRequest extends FormRequest
             }
 
             if (! in_array($reservation->status->value, [
-                \App\Enums\ReservationStatus::CheckedIn->value,
-                \App\Enums\ReservationStatus::Extended->value,
+                ReservationStatus::CheckedIn->value,
+                ReservationStatus::Extended->value,
             ], true)) {
                 $validator->errors()->add(
                     'reservation_id',

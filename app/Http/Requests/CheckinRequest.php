@@ -3,7 +3,11 @@
 namespace App\Http\Requests;
 
 use App\Enums\PermissionName;
+use App\Enums\ReservationStatus;
+use App\Enums\RoomStatus;
 use App\Models\Checkin;
+use App\Models\Reservation;
+use App\Models\Room;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Validation\Rule;
@@ -62,7 +66,7 @@ class CheckinRequest extends FormRequest
                 return;
             }
 
-            $reservation = \App\Models\Reservation::withoutGlobalScope('branch')
+            $reservation = Reservation::withoutGlobalScope('branch')
                 ->find($this->input('reservation_id'));
 
             if (! $reservation) {
@@ -73,7 +77,7 @@ class CheckinRequest extends FormRequest
                 return;
             }
 
-            if ($reservation->status->value !== \App\Enums\ReservationStatus::Confirmed->value) {
+            if ($reservation->status->value !== ReservationStatus::Confirmed->value) {
                 $validator->errors()->add(
                     'reservation_id',
                     'Only confirmed reservations can be checked in.',
@@ -85,7 +89,7 @@ class CheckinRequest extends FormRequest
             }
 
             if ($this->filled('room_id')) {
-                $room = \App\Models\Room::withoutGlobalScope('organization')
+                $room = Room::withoutGlobalScope('organization')
                     ->find($this->input('room_id'));
 
                 if (! $room) {
@@ -101,8 +105,8 @@ class CheckinRequest extends FormRequest
                         'The room must match the room assigned to the reservation.',
                     );
                 } elseif (in_array($room->status->value, [
-                    \App\Enums\RoomStatus::Maintenance->value,
-                    \App\Enums\RoomStatus::OutOfService->value,
+                    RoomStatus::Maintenance->value,
+                    RoomStatus::OutOfService->value,
                 ], true)) {
                     $validator->errors()->add(
                         'room_id',

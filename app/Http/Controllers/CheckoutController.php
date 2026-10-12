@@ -8,7 +8,6 @@ use App\Http\Requests\CheckoutRequest;
 use App\Models\Checkout;
 use App\Models\Guest;
 use App\Models\Invoice;
-use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
 use App\Services\InvoiceService;

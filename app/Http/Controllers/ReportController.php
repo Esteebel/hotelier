@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Enums\PermissionName;
+use App\Models\Guest;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Reservation;
 use App\Models\Room;
-use App\Models\RoomType;
 use App\Support\ContextualBranch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -79,7 +79,7 @@ class ReportController extends Controller
 
         $branchScope = fn ($query) => $query->when($branchId > 0, fn ($q) => $q->where('branch_id', $branchId));
 
-        $filename = "{$type}_report_" . now()->format('Y-m-d_His') . '.csv';
+        $filename = "{$type}_report_".now()->format('Y-m-d_His').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -100,7 +100,7 @@ class ReportController extends Controller
                         ->each(function ($r) use ($handle) {
                             fputcsv($handle, [
                                 $r->reservation_number,
-                                $r->guest?->first_name . ' ' . $r->guest?->last_name,
+                                $r->guest?->first_name.' '.$r->guest?->last_name,
                                 $r->room?->room_number,
                                 $r->check_in,
                                 $r->check_out,
@@ -129,13 +129,13 @@ class ReportController extends Controller
 
                 case 'guests':
                     fputcsv($handle, ['Guest #', 'Name', 'Email', 'Phone', 'Reservations']);
-                    $branchScope(\App\Models\Guest::query())
+                    $branchScope(Guest::query())
                         ->withCount('reservations')
                         ->orderBy('created_at', 'desc')
                         ->each(function ($g) use ($handle) {
                             fputcsv($handle, [
                                 $g->guest_number,
-                                $g->first_name . ' ' . $g->last_name,
+                                $g->first_name.' '.$g->last_name,
                                 $g->email,
                                 $g->phone,
                                 $g->reservations_count,

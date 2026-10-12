@@ -50,6 +50,8 @@ class RoomRequest extends FormRequest
                 'cleaning', 'maintenance', 'out_of_service',
             ])],
             'description' => ['nullable', 'string', 'max:2000'],
+            'amenities' => ['sometimes', 'nullable', 'array'],
+            'amenities.*' => ['string', 'max:40'],
             'is_active' => ['sometimes', 'boolean'],
         ];
     }

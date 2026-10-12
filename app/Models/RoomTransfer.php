@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\Support\ContextualBranch;
 use App\Models\Concerns\HasOrganizationScope;
+use App\Support\ContextualBranch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class RoomTransfer extends Model
 {
     use HasFactory;
-    use SoftDeletes;
     use HasOrganizationScope;
+    use SoftDeletes;
 
     protected $fillable = [
         'transfer_number',

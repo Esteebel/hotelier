@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\RoomStatusChanged;
 use App\Http\Requests\RoomRequest;
 use App\Models\Room;
 use App\Models\RoomType;
@@ -95,6 +96,7 @@ class RoomController extends Controller
                 'price' => $room->price,
                 'status' => $room->status->value,
                 'description' => $room->description,
+                'amenities' => $room->amenities,
                 'is_active' => $room->is_active,
             ],
             'roomTypes' => $this->roomTypeOptions(),
@@ -111,7 +113,7 @@ class RoomController extends Controller
         $room->update($request->validated());
 
         if ($oldStatus !== null && $oldStatus !== $room->status?->value) {
-            \App\Events\RoomStatusChanged::dispatch($room, $oldStatus, $room->status->value);
+            RoomStatusChanged::dispatch($room, $oldStatus, $room->status->value);
         }
 
         return redirect()

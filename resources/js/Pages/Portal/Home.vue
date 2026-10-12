@@ -2,6 +2,7 @@
 import { Head, Link } from "@inertiajs/vue3";
 import AppIcon from "@/Components/AppIcon.vue";
 import CustomerLayout from "@/Layouts/CustomerLayout.vue";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     guest: Object,
@@ -36,8 +37,6 @@ const cards = [
         format: "money",
     },
 ];
-
-const formatMoney = (amount) => `₦${Number(amount ?? 0).toLocaleString()}`;
 </script>
 
 <template>

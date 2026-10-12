@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import { formatMoney } from "@/Utils/format.js";
 
 const props = defineProps({
     checkout: Object,
@@ -15,10 +16,7 @@ const statusLabel =
     props.checkout.status === "completed" ? "Completed" : "Cancelled";
 
 function formatCurrency(amount) {
-    return new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-    }).format(amount || 0);
+    return formatMoney(amount, { decimals: 2 });
 }
 </script>
 

@@ -7,6 +7,7 @@ use App\Models\HotelOrganization;
 use App\Models\Notification;
 use App\Support\ContextualBranch;
 use App\Support\ContextualOrganization;
+use App\Support\Settings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -64,6 +65,7 @@ class HandleInertiaRequests extends Middleware
                 && ! $user->isCustomer()
                 && ! $user->isOrgScoped(),
             'activeOrganizationId' => $user ? ContextualOrganization::id() : null,
+            'settings' => Settings::all(),
             'navOrganizations' => $user && ! $user->isCustomer()
                 ? ($user->isOrgScoped()
                         ? HotelOrganization::query()->whereKey($user->organization_id)

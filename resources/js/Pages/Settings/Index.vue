@@ -78,6 +78,7 @@ const timezones = [
 const form = useForm({
     brand_name: props.settings?.brand_name ?? "",
     default_currency: props.settings?.default_currency ?? "NGN",
+    tax_rate: props.settings?.tax_rate ?? 7.5,
     check_in_time: props.settings?.check_in_time ?? "14:00",
     check_out_time: props.settings?.check_out_time ?? "12:00",
     timezone: props.settings?.timezone ?? "Africa/Lagos",
@@ -172,6 +173,23 @@ const submit = () => {
                         <InputError
                             class="mt-2"
                             :message="form.errors.default_currency"
+                        />
+                    </div>
+
+                    <div>
+                        <InputLabel value="Tax Rate (%)" />
+                        <TextInput
+                            v-model.number="form.tax_rate"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            class="mt-1 block w-full"
+                            required
+                        />
+                        <InputError
+                            class="mt-2"
+                            :message="form.errors.tax_rate"
                         />
                     </div>
 
