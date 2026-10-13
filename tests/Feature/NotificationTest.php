@@ -180,4 +180,14 @@ class NotificationTest extends TestCase
 
         $this->assertSame(0, Notification::count());
     }
+
+    public function test_create_page_loads_for_authorized_user(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('notifications.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page->component('Notifications/Create'),
+            );
+    }
 }

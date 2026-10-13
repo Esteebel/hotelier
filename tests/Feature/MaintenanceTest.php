@@ -182,4 +182,16 @@ class MaintenanceTest extends TestCase
 
         $this->assertSame(0, MaintenanceTask::count());
     }
+
+    public function test_create_page_loads_for_authorized_user(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('maintenance.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Maintenance/Create')
+                    ->has('rooms'),
+            );
+    }
 }

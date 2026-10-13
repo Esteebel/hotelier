@@ -181,4 +181,14 @@ class ExpenseTest extends TestCase
 
         $this->assertSame(0, Expense::count());
     }
+
+    public function test_create_page_loads_for_authorized_user(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('expenses.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page->component('Expenses/Create'),
+            );
+    }
 }

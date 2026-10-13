@@ -185,4 +185,16 @@ class HousekeepingTest extends TestCase
 
         $this->assertSame(0, HousekeepingTask::count());
     }
+
+    public function test_create_page_loads_for_authorized_user(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('housekeeping.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Housekeeping/Create')
+                    ->has('rooms'),
+            );
+    }
 }

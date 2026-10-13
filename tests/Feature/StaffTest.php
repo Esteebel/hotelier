@@ -174,4 +174,14 @@ class StaffTest extends TestCase
 
         $this->assertSame(0, Staff::count());
     }
+
+    public function test_create_page_loads_for_authorized_user(): void
+    {
+        $this->actingAs($this->user)
+            ->get(route('staff.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page->component('Staff/Create'),
+            );
+    }
 }

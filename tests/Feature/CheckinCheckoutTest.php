@@ -466,4 +466,49 @@ class CheckinCheckoutTest extends TestCase
         $this->assertSame('occupied', $this->room->fresh()->status->value);
         $this->assertSame('checked_in', Reservation::find($reservationId)->status->value);
     }
+
+    public function test_checkin_create_page_loads_with_confirmed_stays(): void
+    {
+        $this->makeReservation();
+
+        $this->actingAs($this->user)
+            ->get(route('checkins.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Checkins/Create')
+                    ->has('reservations', 1),
+            );
+    }
+
+    public function test_checkout_create_page_loads(): void
+    {
+        $this->makeReservation(['status' => 'checked_in']);
+
+        $this->actingAs($this->user)
+            ->get(route('checkouts.create'))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page->component('Checkouts/Create'),
+            );
+    }
+
+    public function test_checkout_update_persists_notes(): void
+    {
+        $checkout = $this->storeCheckout();
+
+        $this->actingAs($this->user)
+            ->put(route('checkouts.update', $checkout), [
+                'reservation_id' => $checkout->reservation_id,
+                'room_id' => $checkout->room_id,
+                'guest_id' => $checkout->guest_id,
+                'notes' => 'Late checkout approved',
+            ])
+            ->assertRedirect(route('checkouts.index'));
+
+        $this->assertDatabaseHas('checkouts', [
+            'id' => $checkout->id,
+            'notes' => 'Late checkout approved',
+        ]);
+    }
 }

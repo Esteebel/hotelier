@@ -208,4 +208,39 @@ class RoomCrudTest extends TestCase
 
         $this->assertSame([], $room->fresh()->amenities);
     }
+
+    public function test_room_edit_page_loads(): void
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('rooms.store'), $this->payload())
+            ->assertRedirect(route('rooms.index'));
+
+        $room = Room::firstOrFail();
+
+        $this->actingAs($this->user)
+            ->get(route('rooms.edit', $room))
+            ->assertOk()
+            ->assertInertia(
+                fn (Assert $page) => $page
+                    ->component('Rooms/Edit')
+                    ->where('room.id', $room->id),
+            );
+    }
+
+    public function test_room_destroy_removes_room(): void
+    {
+        $this->actingAs($this->user)
+            ->withSession(['active_branch_id' => $this->branch->id])
+            ->post(route('rooms.store'), $this->payload())
+            ->assertRedirect(route('rooms.index'));
+
+        $room = Room::firstOrFail();
+
+        $this->actingAs($this->user)
+            ->delete(route('rooms.destroy', $room))
+            ->assertRedirect(route('rooms.index'));
+
+        $this->assertSame(0, Room::count());
+    }
 }
